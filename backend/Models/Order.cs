@@ -35,4 +35,8 @@ public class Order
     public decimal TotalPrice { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public ICollection<OrderLine> Lines { get; set; } = new List<OrderLine>();
+    public ICollection<OrderImage> Images { get; set; } = new List<OrderImage>();
+    public ICollection<OrderStatusHistory> StatusHistories { get; set; } = new List<OrderStatusHistory>();
 }

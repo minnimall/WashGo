@@ -18,6 +18,8 @@ public static class DbSeeder
                 await roleManager.CreateAsync(new IdentityRole(role));
         }
 
+        await CatalogSeeder.SeedAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>());
+
         var email = config["Seed:AdminEmail"];
         var password = config["Seed:AdminPassword"];
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password)) return;

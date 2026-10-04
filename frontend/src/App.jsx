@@ -1,95 +1,43 @@
-import { useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './AuthContext'
+import Layout from './components/Layout'
+import RequireRole from './components/RequireRole'
+import LoginPage from './pages/LoginPage'
+import LocationsPage from './pages/LocationsPage'
+import NewOrderPage from './pages/NewOrderPage'
+import OrdersPage from './pages/OrdersPage'
+import OrderDetailPage from './pages/OrderDetailPage'
 
-function errorText(err) {
-  const d = err.response?.data
-  if (!d) return 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'
-  if (d.error) return d.error
-  if (Array.isArray(d.errors)) return d.errors.join(', ')
-  if (d.errors) return Object.values(d.errors).flat().join(', ')
-  return 'เกิดข้อผิดพลาด'
-}
-
-function AuthForm() {
-  const { login, register } = useAuth()
-  const [mode, setMode] = useState('login')
-  const [form, setForm] = useState({
-    fullName: '', email: '', password: '', phone: '', role: 'Customer',
-  })
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
-
-  const submit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setBusy(true)
-    try {
-      if (mode === 'login') await login(form.email, form.password)
-      else await register(form)
-    } catch (err) {
-      setError(errorText(err))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const input = { display: 'block', width: '100%', padding: 8, marginBottom: 10 }
+function Home() {
+  const { user } = useAuth()
+  if (user.roles.includes('Customer')) return <Navigate to="/orders" replace />
 
   return (
-    <form onSubmit={submit} style={{ maxWidth: 360, margin: '48px auto' }}>
-      <h2>{mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}</h2>
-
-      {mode === 'register' && (
-        <>
-          <input style={input} placeholder="ชื่อ-นามสกุล" value={form.fullName} onChange={set('fullName')} required />
-          <input style={input} placeholder="เบอร์โทร (ไม่บังคับ)" value={form.phone} onChange={set('phone')} />
-          <select style={input} value={form.role} onChange={set('role')}>
-            <option value="Customer">ลูกค้า</option>
-            <option value="Rider">ไรเดอร์</option>
-          </select>
-        </>
-      )}
-
-      <input style={input} type="email" placeholder="อีเมล" value={form.email} onChange={set('email')} required />
-      <input style={input} type="password" placeholder="รหัสผ่าน (อย่างน้อย 8 ตัว)" value={form.password} onChange={set('password')} required />
-
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-
-      <button type="submit" disabled={busy} style={{ padding: '8px 16px' }}>
-        {busy ? 'กำลังดำเนินการ...' : mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัคร'}
-      </button>
-
-      <p>
-        <a href="#" onClick={(e) => { e.preventDefault(); setError(''); setMode(mode === 'login' ? 'register' : 'login') }}>
-          {mode === 'login' ? 'ยังไม่มีบัญชี? สมัครสมาชิก' : 'มีบัญชีแล้ว? เข้าสู่ระบบ'}
-        </a>
-      </p>
-    </form>
-  )
-}
-
-function Main() {
-  const { user, loading, logout } = useAuth()
-
-  if (loading) return <p style={{ padding: 24 }}>กำลังโหลด...</p>
-  if (!user) return <AuthForm />
-
-  return (
-    <div style={{ padding: 24 }}>
-      <h1>WashGo</h1>
-      <p>สวัสดี {user.fullName} ({user.email})</p>
-      <p>Role: {user.roles.join(', ')}</p>
-      <button onClick={logout}>ออกจากระบบ</button>
+    <div className="card">
+      <h2>สวัสดี {user.fullName}</h2>
+      <p className="muted">หน้าสำหรับ {user.roles.join(', ')} อยู่ระหว่างพัฒนา</p>
     </div>
   )
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Main />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+
+          <Route element={<RequireRole><Layout /></RequireRole>}>
+            <Route path="/" element={<Home />} />
+            <Route path="/orders" element={<RequireRole role="Customer"><OrdersPage /></RequireRole>} />
+            <Route path="/orders/new" element={<RequireRole role="Customer"><NewOrderPage /></RequireRole>} />
+            <Route path="/orders/:id" element={<RequireRole role="Customer"><OrderDetailPage /></RequireRole>} />
+            <Route path="/locations" element={<RequireRole role="Customer"><LocationsPage /></RequireRole>} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }

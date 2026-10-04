@@ -12,6 +12,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ServiceType> ServiceTypes => Set<ServiceType>();
     public DbSet<ServicePrice> ServicePrices => Set<ServicePrice>();
     public DbSet<Order> Orders => Set<Order>();
+    public DbSet<CatalogItem> CatalogItems => Set<CatalogItem>();
+    public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+    public DbSet<OrderLine> OrderLines => Set<OrderLine>();
+    public DbSet<OrderImage> OrderImages => Set<OrderImage>();
+    public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
     {
@@ -46,6 +51,52 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasIndex(p => new { p.ServiceTypeId, p.Size }).IsUnique();
             e.HasOne(p => p.ServiceType).WithMany(s => s.Prices)
              .HasForeignKey(p => p.ServiceTypeId);
+        });
+
+        b.Entity<CatalogItem>(e =>
+        {
+            e.Property(c => c.Type).HasConversion<string>().HasMaxLength(10);
+            e.Property(c => c.Name).HasMaxLength(100);
+        });
+
+        b.Entity<AppSetting>(e =>
+        {
+            e.HasKey(s => s.Key);
+            e.Property(s => s.Key).HasMaxLength(100);
+            e.Property(s => s.Value).HasMaxLength(500);
+        });
+
+        b.Entity<OrderLine>(e =>
+        {
+            e.Property(l => l.Type).HasConversion<string>().HasMaxLength(10);
+            e.Property(l => l.Name).HasMaxLength(100);
+            e.HasOne(l => l.Order).WithMany(o => o.Lines)
+             .HasForeignKey(l => l.OrderId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(l => l.CatalogItem).WithMany()
+             .HasForeignKey(l => l.CatalogItemId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<OrderImage>(e =>
+        {
+            e.Property(i => i.Type).HasConversion<string>().HasMaxLength(20);
+            e.Property(i => i.ImagePath).HasMaxLength(500);
+            e.HasOne(i => i.Order).WithMany(o => o.Images)
+             .HasForeignKey(i => i.OrderId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.UploadedBy).WithMany()
+             .HasForeignKey(i => i.UploadedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<OrderStatusHistory>(e =>
+        {
+            e.Property(h => h.FromStatus).HasConversion<string>().HasMaxLength(40);
+            e.Property(h => h.ToStatus).HasConversion<string>().HasMaxLength(40);
+            e.Property(h => h.Note).HasMaxLength(500);
+            e.HasIndex(h => new { h.OrderId, h.CreatedAt });
+            e.HasOne(h => h.Order).WithMany(o => o.StatusHistories)
+             .HasForeignKey(h => h.OrderId).OnDelete(DeleteBehavior.Cascade);
+            // ประวัติเป็นหลักฐาน ลบผู้ใช้แล้วต้องไม่พาประวัติหายตาม จึงใช้ Restrict
+            e.HasOne(h => h.ChangedBy).WithMany()
+             .HasForeignKey(h => h.ChangedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<Order>(e =>
