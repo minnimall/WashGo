@@ -37,3 +37,60 @@ export const money = (n) =>
 
 export const dateTime = (iso) =>
     new Date(iso).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })
+
+export const VERIFY_LABELS = {
+    Registered: 'ยังไม่ได้ส่งเอกสาร',
+    PendingReview: 'รอ Admin ตรวจสอบ',
+    Approved: 'อนุมัติแล้ว',
+    Rejected: 'ถูกปฏิเสธ (แก้ไขแล้วส่งใหม่ได้)',
+    Suspended: 'ถูกระงับ',
+}
+
+export const IMAGE_LABELS = {
+    PickupLaundry: 'รูปผ้าตอนรับ',
+    Detergent: 'รูปน้ำยา',
+    SizeAdjust: 'รูปปรับไซส์',
+    WashReceipt: 'รูปใบรับซัก',
+    Delivery: 'รูปผ้าที่ส่งมอบ',
+    PaymentSlip: 'สลิปโอนเงิน',
+    CustomerLaundry: 'รูปผ้าจากลูกค้า',
+}
+
+// รูปแต่ละชนิดอัปโหลดได้ตอนสถานะไหน (ต้องตรงกับ JobFlow.ImageAllowedAt ฝั่ง backend)
+// SizeAdjust ยังไม่เปิดใช้ จะทำพร้อมฟีเจอร์ปรับไซส์
+export const IMAGE_AT = {
+    PickupLaundry: ['GoingToPickup', 'PickedUp'],
+    Detergent: ['GoingToPickup', 'PickedUp'],
+    WashReceipt: ['PickedUp', 'Washing'],
+    Delivery: ['Delivering', 'Delivered'],
+}
+
+export const NEXT_ACTION_LABELS = {
+    GoingToPickup: 'ออกเดินทางไปรับผ้า',
+    PickedUp: 'รับผ้าแล้ว',
+    Washing: 'นำผ้าเข้าซัก',
+    WashingCompleted: 'ซักเสร็จแล้ว',
+    Delivering: 'ออกเดินทางส่งผ้า',
+    Delivered: 'ส่งผ้าถึงลูกค้าแล้ว',
+}
+
+// ย่อรูปและแปลงเป็น JPEG ในเบราว์เซอร์ ช่วยให้ไฟล์เล็กลง
+// และการวาดใหม่บน canvas ตัดข้อมูล EXIF (รวมพิกัด GPS ของรูป) ออกไปด้วย
+export async function resizeImage(file, maxSide = 1600, quality = 0.85) {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height))
+    const w = Math.round(bitmap.width * scale)
+    const h = Math.round(bitmap.height * scale)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h)
+    bitmap.close?.()
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
+    if (!blob) throw new Error('resize failed')
+    return blob
+}
+
+export const METHOD_LABELS = { Cash: 'เงินสด', Transfer: 'โอนเงิน' }

@@ -203,6 +203,7 @@ public class OrdersController(AppDbContext db) : ControllerBase
             .Include(x => x.DeliveryLocation)
             .Include(x => x.Lines)
             .Include(x => x.StatusHistories)
+            .Include(x => x.Images)
             .AsSplitQuery()
             .FirstOrDefaultAsync(x => x.Id == id && x.CustomerId == userId);   // ตรวจเจ้าของใน query เดียวกัน
 
@@ -221,7 +222,8 @@ public class OrdersController(AppDbContext db) : ControllerBase
             // Timeline ส่งแค่สถานะกับเวลา ไม่ส่งโน้ตภายใน
             o.StatusHistories.OrderBy(h => h.CreatedAt).ThenBy(h => h.Id)
                 .Select(h => new StatusStepDto(h.FromStatus, h.ToStatus, h.CreatedAt))
-                .ToList());
+                .ToList(),
+            o.Images.OrderBy(i => i.Id).Select(i => new OrderImageDto(i.Id, i.Type, i.CreatedAt)).ToList());
     }
 
     static decimal ReadDecimal(Dictionary<string, string> settings, string key)

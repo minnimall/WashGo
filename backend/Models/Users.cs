@@ -27,6 +27,9 @@ public class RiderProfile
     public string? BankAccountNo { get; set; }
 
     public RiderVerificationStatus VerificationStatus { get; set; } = RiderVerificationStatus.Registered;
+    public string? RejectReason { get; set; }
+    public DateTime? SubmittedAt { get; set; }
+    public DateTime? ReviewedAt { get; set; }
     public bool IsAcceptingJobs { get; set; }
     public decimal Rating { get; set; }
 }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using WashGOApi.Data;
@@ -11,9 +12,11 @@ using WashGOApi.Data;
 namespace WashGOApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261004111408_RiderVerificationAndAudit")]
+    partial class RiderVerificationAndAudit
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -581,67 +584,6 @@ namespace WashGOApi.Migrations
                     b.ToTable("OrderStatusHistories");
                 });
 
-            modelBuilder.Entity("WashGOApi.Models.Payment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
-                    b.Property<DateTime?>("ConfirmedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ConfirmedByRiderId")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Method")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<int>("OrderId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("RejectReason")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<int>("SlipAttempts")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("SlipImageId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<uint>("Version")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ConfirmedByRiderId");
-
-                    b.HasIndex("OrderId")
-                        .IsUnique();
-
-                    b.HasIndex("SlipImageId");
-
-                    b.ToTable("Payments");
-                });
-
             modelBuilder.Entity("WashGOApi.Models.RiderProfile", b =>
                 {
                     b.Property<string>("UserId")
@@ -924,31 +866,6 @@ namespace WashGOApi.Migrations
                     b.Navigation("ChangedBy");
 
                     b.Navigation("Order");
-                });
-
-            modelBuilder.Entity("WashGOApi.Models.Payment", b =>
-                {
-                    b.HasOne("WashGOApi.Models.ApplicationUser", "ConfirmedBy")
-                        .WithMany()
-                        .HasForeignKey("ConfirmedByRiderId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("WashGOApi.Models.Order", "Order")
-                        .WithOne()
-                        .HasForeignKey("WashGOApi.Models.Payment", "OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("WashGOApi.Models.OrderImage", "SlipImage")
-                        .WithMany()
-                        .HasForeignKey("SlipImageId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("ConfirmedBy");
-
-                    b.Navigation("Order");
-
-                    b.Navigation("SlipImage");
                 });
 
             modelBuilder.Entity("WashGOApi.Models.RiderProfile", b =>

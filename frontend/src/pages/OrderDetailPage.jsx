@@ -1,8 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import api from '../api'
 import StatusBadge from '../components/StatusBadge'
+import PhotoGrid from '../components/PhotoGrid'
 import { DETERGENT_LABELS, STATUS_LABELS, dateTime, errorText, money } from '../utils'
+import CustomerPaymentPanel from '../components/CustomerPaymentPanel'
+import LaundryPhotosCard from '../components/LaundryPhotosCard'
+import RiderTrackingCard from '../components/RiderTrackingCard'
 
 const cardCls = 'rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100'
 const h2Cls = 'mb-3 text-lg font-semibold text-slate-900'
@@ -42,11 +46,19 @@ export default function OrderDetailPage() {
     const [error, setError] = useState('')
     const [busy, setBusy] = useState(false)
 
-    useEffect(() => {
+    const load = useCallback(() =>
         api.get(`/orders/${id}`)
         .then((res) => setOrder(res.data))
-        .catch((err) => setError(errorText(err)))
-    }, [id])
+        .catch((err) => setError(errorText(err))), [id])
+
+    useEffect(() => { load() }, [load])
+
+    const liveStatus = order?.status
+    useEffect(() => {
+        if (!liveStatus || liveStatus === 'Completed' || liveStatus === 'Cancelled') return
+        const t = setInterval(() => { if (!document.hidden) load() }, 10000)
+        return () => clearInterval(t)
+    }, [liveStatus, load])
 
     const cancel = async () => {
         if (!window.confirm('ยืนยันยกเลิกออเดอร์นี้?')) return
@@ -92,6 +104,16 @@ export default function OrderDetailPage() {
             {error && (
                 <div className="mt-3 rounded-md border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
             )}
+            {(order.status === 'GoingToPickup' || order.status === 'Delivering') && (
+                <RiderTrackingCard
+                orderId={order.id}
+                status={order.status}
+                pickup={order.pickupLocation}
+                delivery={order.deliveryLocation}
+                />
+            )}
+
+            <LaundryPhotosCard orderId={order.id} status={order.status} images={order.images} onChanged={load} />
             {order.status === 'Pending' && (
             <button
                 onClick={cancel}
@@ -100,6 +122,9 @@ export default function OrderDetailPage() {
             >
                 {busy ? 'กำลังยกเลิก...' : 'ยกเลิกออเดอร์'}
             </button>
+            )}
+            {(order.status === 'Delivered' || order.status === 'Completed') && (
+                <CustomerPaymentPanel orderId={order.id} orderStatus={order.status} onChanged={load} />
             )}
         </div>
 

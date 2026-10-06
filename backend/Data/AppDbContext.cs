@@ -17,6 +17,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
     public DbSet<OrderImage> OrderImages => Set<OrderImage>();
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
     {
@@ -33,6 +35,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasOne(r => r.User).WithOne(u => u.RiderProfile)
              .HasForeignKey<RiderProfile>(r => r.UserId);
             e.Property(r => r.VerificationStatus).HasConversion<string>().HasMaxLength(30);
+            e.Property(r => r.RejectReason).HasMaxLength(500);
+            e.HasIndex(r => r.VerificationStatus);
         });
 
         b.Entity<Location>(e =>
@@ -51,6 +55,33 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasIndex(p => new { p.ServiceTypeId, p.Size }).IsUnique();
             e.HasOne(p => p.ServiceType).WithMany(s => s.Prices)
              .HasForeignKey(p => p.ServiceTypeId);
+        });
+
+        b.Entity<Payment>(e =>
+        {
+            e.Property(p => p.Method).HasConversion<string>().HasMaxLength(10);
+            e.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(p => p.RejectReason).HasMaxLength(300);
+            e.Property(p => p.Version).IsRowVersion();
+            // 1 ออเดอร์ = 1 Payment (WithOne สร้าง unique index ให้เอง)
+            e.HasOne(p => p.Order).WithOne().HasForeignKey<Payment>(p => p.OrderId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(p => p.SlipImage).WithMany().HasForeignKey(p => p.SlipImageId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(p => p.ConfirmedBy).WithMany().HasForeignKey(p => p.ConfirmedByRiderId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<AuditLog>(e =>
+        {
+            e.Property(a => a.Action).HasMaxLength(50);
+            e.Property(a => a.TargetType).HasMaxLength(50);
+            e.Property(a => a.TargetId).HasMaxLength(100);
+            e.Property(a => a.Reason).HasMaxLength(500);
+            e.HasIndex(a => a.CreatedAt);
+            // บันทึกตรวจสอบเป็นหลักฐาน ลบผู้ใช้แล้วต้องไม่พาบันทึกหายตาม
+            e.HasOne(a => a.Actor).WithMany()
+             .HasForeignKey(a => a.ActorId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<CatalogItem>(e =>

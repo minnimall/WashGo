@@ -67,4 +67,4 @@ public record OrderDetailDto(
     decimal ServicePrice, decimal DeliveryFee, decimal ExtrasTotal, decimal PlatformFee, decimal TotalPrice,
     string? RiderName, DateTime CreatedAt,
     LocationDto PickupLocation, LocationDto DeliveryLocation,
-    List<OrderLineDto> Lines, List<StatusStepDto> Timeline);
+    List<OrderLineDto> Lines, List<StatusStepDto> Timeline, List<OrderImageDto> Images);

@@ -287,10 +287,6 @@ export default function LocationsPage() {
                             เพื่อให้การใช้บริการ WashGo สะดวกยิ่งขึ้น
                         </p>
                     </div>
-
-                    <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-600">
-                        {items.length} ที่อยู่
-                    </div>
                 </div>
             </section>
 

@@ -33,6 +33,9 @@ builder.Services.AddIdentityCore<ApplicationUser>(o =>
     .AddEntityFrameworkStores<AppDbContext>();
 
 builder.Services.AddSingleton<JwtService>();
+builder.Services.AddSingleton<PiiProtector>();
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<StorageService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -80,6 +83,14 @@ builder.Services.AddAuthorization();
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    // อัปโหลดรูป: 30 ครั้งต่อนาทีต่อ IP
+    o.AddPolicy("upload", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30,
+            Window = TimeSpan.FromMinutes(1),
+        }));
     // login/register: 10 ครั้งต่อนาทีต่อ IP
     o.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
         ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -95,6 +106,14 @@ builder.Services.AddCors(o => o.AddPolicy("Frontend", p =>
     .AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 
 var app = builder.Build();
+
+// ตรวจค่าลับให้ครบตั้งแต่เริ่มแอป ถ้าขาดจะล้มทันที ไม่ไปพังตอนผู้ใช้อัปโหลด
+_ = app.Services.GetRequiredService<PiiProtector>();
+foreach (var key in new[] { "Supabase:Url", "Supabase:ServiceKey", "Supabase:Bucket" })
+{
+    if (string.IsNullOrWhiteSpace(app.Configuration[key]))
+        throw new InvalidOperationException($"Missing configuration: {key}");
+}
 
 await DbSeeder.SeedAsync(app.Services);
 

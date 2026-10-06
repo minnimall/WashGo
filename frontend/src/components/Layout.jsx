@@ -4,13 +4,45 @@ import { useAuth } from '../AuthContext'
 export default function Layout() {
     const { user, logout } = useAuth()
     const isCustomer = user.roles.includes('Customer')
+    const isRider = user.roles.includes('Rider')
+    const isAdmin = user.roles.includes('Admin')
 
     const navClass = ({ isActive }) =>
-    `px-3 py-2 text-sm font-medium transition-colors duration-300 ${
+    `px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-300 ${
         isActive
             ? 'text-blue-600 font-semibold'
             : 'text-slate-500 hover:text-blue-600'
     }`
+
+    // รวมเมนูตามสิทธิ์ไว้ที่เดียว ใช้ทั้ง desktop และ mobile
+    const navLinks = [
+        ...(isCustomer
+            ? [
+                  { to: '/orders/new', label: 'สั่งซักผ้า' },
+                  { to: '/orders', label: 'ออเดอร์ของฉัน', end: true },
+                  { to: '/locations', label: 'ที่อยู่ของฉัน' },
+              ]
+            : []),
+        ...(isRider
+            ? [
+                  { to: '/rider/jobs', label: 'งาน' },
+                  { to: '/rider', label: 'บัญชี Rider', end: true },
+              ]
+            : []),
+        ...(isAdmin ? [{ to: '/admin/riders', label: 'ตรวจสอบ Rider' }] : []),
+    ]
+
+    const hasNav = navLinks.length > 0
+
+    // ป้ายบทบาทที่แสดงใต้ชื่อผู้ใช้
+    const roleLabel = isAdmin ? 'Admin' : isRider ? 'Rider' : isCustomer ? 'Customer' : 'User'
+
+    const renderLinks = () =>
+        navLinks.map(({ to, label, end }) => (
+            <NavLink key={to} to={to} end={end} className={navClass}>
+                {label}
+            </NavLink>
+        ))
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
@@ -29,31 +61,12 @@ export default function Layout() {
                                 alt="WashGo"
                                 className="h-30 w-30 object-contain transition-all duration-300 group-hover:-translate-y-0.5 group-hover:scale-105"
                             />
-
-                            {/* <div className="hidden sm:block">
-                                <h1 className="text-lg font-black tracking-tight text-slate-800">
-                                    Wash<span className="text-blue-600">Go</span>
-                                </h1>
-                                <p className="text-[10px] font-medium tracking-wider text-slate-400">
-                                    LAUNDRY SERVICE
-                                </p>
-                            </div> */}
                         </NavLink>
 
                         {/* Navigation */}
-                        {isCustomer && (
+                        {hasNav && (
                             <nav className="hidden md:flex items-center gap-1">
-                                <NavLink to="/orders/new" className={navClass}>
-                                    สั่งซักผ้า
-                                </NavLink>
-
-                                <NavLink to="/orders" end className={navClass}>
-                                    ออเดอร์ของฉัน
-                                </NavLink>
-
-                                <NavLink to="/locations" className={navClass}>
-                                    ที่อยู่ของฉัน
-                                </NavLink>
+                                {renderLinks()}
                             </nav>
                         )}
                     </div>
@@ -73,7 +86,7 @@ export default function Layout() {
                                 </p>
 
                                 <p className="text-[11px] text-slate-400">
-                                    {isCustomer ? 'Customer' : 'User'}
+                                    {roleLabel}
                                 </p>
                             </div>
                         </div>
@@ -94,19 +107,9 @@ export default function Layout() {
                 </div>
 
                 {/* Mobile Navigation */}
-                {isCustomer && (
+                {hasNav && (
                     <nav className="md:hidden flex gap-5 overflow-x-auto px-4 pb-3 border-t border-slate-100">
-                        <NavLink to="/orders/new" className={navClass}>
-                            สั่งซักผ้า
-                        </NavLink>
-
-                        <NavLink to="/orders" end className={navClass}>
-                            ออเดอร์ของฉัน
-                        </NavLink>
-
-                        <NavLink to="/locations" className={navClass}>
-                            ที่อยู่ของฉัน
-                        </NavLink>
+                        {renderLinks()}
                     </nav>
                 )}
             </header>
