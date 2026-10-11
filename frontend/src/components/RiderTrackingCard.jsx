@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import api from '../api'
 import RouteMap from './RouteMap'
 import { ui } from '../ui'
+import useAutoRefresh from '../useAutoRefresh'
 
 function haversineKm(a, b) {
     const R = 6371
@@ -18,25 +19,18 @@ export default function RiderTrackingCard({ orderId, status, pickup, delivery })
     const [point, setPoint] = useState(null)
     const [error, setError] = useState('')
 
-    useEffect(() => {
-        let alive = true
-        const load = async () => {
+    const load = useCallback(async () => {
         try {
-            const res = await api.get(`/orders/${orderId}/tracking`)
-            if (!alive) return
-            setPoint(res.data.point)
-            setError('')
+        const res = await api.get(`/orders/${orderId}/tracking`)
+        setPoint(res.data.point)
+        setError('')
         } catch {
-            if (alive) setError('โหลดตำแหน่ง Rider ไม่ได้ในขณะนี้')
+        setError('โหลดตำแหน่ง Rider ไม่ได้ในขณะนี้')
         }
-        }
-        load()
-        const t = setInterval(() => { if (!document.hidden) load() }, 6000)
-        return () => {
-        alive = false
-        clearInterval(t)
-        }
-    }, [orderId, status])
+    }, [orderId])
+
+    useEffect(() => { load() }, [load, status])
+    useAutoRefresh(load, { interval: 5000 })
 
     const delivering = status === 'Delivering'
     const loc = delivering ? delivery : pickup

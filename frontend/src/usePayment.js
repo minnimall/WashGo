@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import api from './api'
 import { errorText } from './utils'
+import useAutoRefresh from './useAutoRefresh'
 
 // โหลดสถานะการชำระเงิน และดึงใหม่ทุก 8 วินาทีจนกว่าออเดอร์จะ Completed
 export default function usePayment(orderId, orderStatus, onChanged) {
@@ -23,11 +24,7 @@ export default function usePayment(orderId, orderStatus, onChanged) {
     useEffect(() => { load() }, [load])
 
     const done = payment?.orderStatus === 'Completed'
-    useEffect(() => {
-        if (done) return
-        const t = setInterval(() => { if (!document.hidden) load() }, 8000)
-        return () => clearInterval(t)
-    }, [done, load])
+    useAutoRefresh(load, { interval: 8000, enabled: !done })
 
     // อีกฝั่งทำให้ออเดอร์จบแล้ว แต่หน้าแม่ยังเป็นสถานะเก่า → ให้หน้าแม่โหลดใหม่
     useEffect(() => {

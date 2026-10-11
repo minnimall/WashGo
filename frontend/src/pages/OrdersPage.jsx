@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import api from '../api'
 import StatusBadge from '../components/StatusBadge'
 import { dateTime, errorText, money } from '../utils'
+import useAutoRefresh from '../useAutoRefresh'
 
 export default function OrdersPage() {
     const [data, setData] = useState(null)
@@ -13,6 +14,13 @@ export default function OrdersPage() {
             .then((res) => setData(res.data))
             .catch((err) => setError(errorText(err)))
     }, [])
+
+    useAutoRefresh(async () => {
+        try {
+        const res = await api.get('/orders')
+        setData(res.data)
+        } catch { /* ข้ามรอบนี้ */ }
+    }, { interval: 8000 })
 
     const orders = data?.items || []
 
