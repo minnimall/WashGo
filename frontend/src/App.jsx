@@ -12,12 +12,15 @@ import RiderVerificationPage from './pages/RiderVerificationPage'
 import RiderJobsPage from './pages/RiderJobsPage'
 import RiderJobDetailPage from './pages/RiderJobDetailPage'
 import AdminRidersPage from './pages/AdminRidersPage'
+import CustomerHomePage from './pages/CustomerHomePage'
+import RiderHomePage from './pages/RiderHomePage'
+import RiderEarningsPage from './pages/RiderEarningsPage'
 
 function Home() {
   const { user } = useAuth()
-    if (user.roles.includes('Customer')) return <Navigate to="/orders" replace />
-    if (user.roles.includes('Rider')) return <Navigate to="/rider" replace />
-    if (user.roles.includes('Admin')) return <Navigate to="/admin/riders" replace />
+      if (user.roles.includes('Customer')) return <CustomerHomePage />
+      if (user.roles.includes('Rider')) return <RiderHomePage />
+      if (user.roles.includes('Admin')) return <Navigate to="/admin/riders" replace />
 
   return (
     <div className="card">
@@ -45,6 +48,8 @@ export default function App() {
             <Route path="/rider/verify" element={<RequireRole role="Rider"><RiderVerificationPage /></RequireRole>} />
             <Route path="/rider/jobs" element={<RequireRole role="Rider"><RiderJobsPage /></RequireRole>} />
             <Route path="/rider/jobs/:id" element={<RequireRole role="Rider"><RiderJobDetailPage /></RequireRole>} />
+            <Route path="/rider/earnings" element={<RequireRole role="Rider"><RiderEarningsPage /></RequireRole>} />
+            
             <Route path="/admin/riders" element={<RequireRole role="Admin"><AdminRidersPage /></RequireRole>} />
           </Route>
 

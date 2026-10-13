@@ -4,15 +4,25 @@ import api from '../api'
 import { errorText, money, SIZE_DESC } from '../utils'
 
 const SIZES = ['S', 'M', 'L']
+const STEP_LABELS = ['บริการ', 'รับ–ส่ง', 'ยืนยัน']
 
 const inputCls =
     'w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100'
 
 const sectionCls =
-    'rounded-[24px] border border-slate-100 bg-white p-6 shadow-sm sm:p-7'
+    'rounded-3xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7'
 
+/* การ์ดตัวเลือกแบบมีวงกลมเลือก (ใช้กับบริการ) */
 const choiceCls = (selected) =>
-    `flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 transition-all duration-200 ${
+    `flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-3.5 transition-all duration-200 ${
+        selected
+            ? 'border-blue-600 bg-blue-50'
+            : 'border-slate-100 bg-slate-50/50 hover:border-blue-200 hover:bg-blue-50/30'
+    }`
+
+/* ปุ่มเลือกแบบกะทัดรัด เรียงในแถวเดียว (ใช้กับขนาดและน้ำยา) */
+const chipCls = (selected) =>
+    `flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 px-2 py-3 text-center transition-all duration-200 focus-within:ring-4 focus-within:ring-blue-100 ${
         selected
             ? 'border-blue-600 bg-blue-50'
             : 'border-slate-100 bg-slate-50/50 hover:border-blue-200 hover:bg-blue-50/30'
@@ -50,7 +60,7 @@ function PriceRow({ label, value, total }) {
 
 function StepHeader({ number, title, description }) {
     return (
-        <div className="mb-5">
+        <div className="mb-4 sm:mb-5">
             <p className="text-xs font-bold tracking-[0.15em] text-blue-600">
                 {number}
             </p>
@@ -68,12 +78,66 @@ function StepHeader({ number, title, description }) {
     )
 }
 
+/* แถบขั้นตอน — แสดงเฉพาะมือถือ/แท็บเล็ต */
+function Stepper({ step, onGo }) {
+    return (
+        <ol className="flex items-start lg:hidden">
+            {STEP_LABELS.map((label, i) => {
+                const n = i + 1
+                const done = n < step
+                const active = n === step
+
+                return (
+                    <li key={label} className="flex flex-1 items-start last:flex-none">
+                        <button
+                            type="button"
+                            disabled={n > step}
+                            onClick={() => onGo(n)}
+                            className="flex flex-col items-center gap-1 disabled:cursor-default"
+                        >
+                            <span
+                                className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-all ${
+                                    active
+                                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                                        : done
+                                          ? 'bg-blue-100 text-blue-600'
+                                          : 'bg-slate-100 text-slate-400'
+                                }`}
+                            >
+                                {done ? '✓' : n}
+                            </span>
+                            <span
+                                className={`text-[11px] font-semibold ${
+                                    active ? 'text-blue-600' : 'text-slate-400'
+                                }`}
+                            >
+                                {label}
+                            </span>
+                        </button>
+
+                        {n < STEP_LABELS.length && (
+                            <span
+                                className={`mx-2 mt-4 h-0.5 flex-1 rounded-full ${
+                                    done ? 'bg-blue-300' : 'bg-slate-200'
+                                }`}
+                            />
+                        )}
+                    </li>
+                )
+            })}
+        </ol>
+    )
+}
+
 export default function NewOrderPage() {
     const navigate = useNavigate()
 
     const [catalog, setCatalog] = useState(null)
     const [locations, setLocations] = useState([])
     const [loadError, setLoadError] = useState('')
+
+    // ขั้นตอนปัจจุบัน (ใช้เฉพาะมือถือ/แท็บเล็ต — จอใหญ่แสดงครบทุกขั้น)
+    const [step, setStep] = useState(1)
 
     const [serviceId, setServiceId] = useState(null)
     const [size, setSize] = useState('M')
@@ -157,35 +221,55 @@ export default function NewOrderPage() {
         })
     }
 
+    const scrollTop = () =>
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+
+    const goTo = (n) => {
+        setError('')
+        setStep(n)
+        scrollTop()
+    }
+
+    // ตรวจข้อมูลของขั้นที่ระบุ — คืนข้อความ error หรือ '' ถ้าผ่าน
+    const validateStep = (n) => {
+        if (n === 1 && !serviceId) return 'กรุณาเลือกบริการ'
+
+        if (n === 2) {
+            if (locations.length === 0)
+                return 'กรุณาเพิ่มสถานที่รับส่งผ้าก่อนสั่งซัก'
+            if (!pickupId) return 'กรุณาเลือกจุดรับผ้า'
+            if (!sameAsPickup && !deliveryId)
+                return 'กรุณาเลือกจุดส่งผ้า'
+        }
+
+        return ''
+    }
+
+    const goNext = () => {
+        const msg = validateStep(step)
+        if (msg) {
+            setError(msg)
+            return
+        }
+        goTo(Math.min(3, step + 1))
+    }
+
     const submit = async (e) => {
         e.preventDefault()
         setError('')
 
-        if (!serviceId) {
-            setError('กรุณาเลือกบริการ')
-            return
-        }
-
-        if (locations.length === 0) {
-            setError(
-                'กรุณาเพิ่มสถานที่รับส่งผ้าก่อนสั่งซัก'
-            )
-            return
-        }
-
-        if (!pickupId) {
-            setError('กรุณาเลือกจุดรับผ้า')
-            return
+        // ตรวจทุกขั้น (กรณีกดส่งจากจอใหญ่ที่เห็นครบทุกส่วน)
+        for (const n of [1, 2]) {
+            const msg = validateStep(n)
+            if (msg) {
+                setError(msg)
+                return
+            }
         }
 
         const delivery = sameAsPickup
             ? pickupId
             : deliveryId
-
-        if (!delivery) {
-            setError('กรุณาเลือกจุดส่งผ้า')
-            return
-        }
 
         if (!accepted) {
             setError(
@@ -242,10 +326,13 @@ export default function NewOrderPage() {
         )
     }
 
+    // แสดงเฉพาะขั้นปัจจุบันบนมือถือ / แสดงทุกขั้นบนจอใหญ่
+    const show = (n) => (step === n ? '' : 'hidden lg:block')
+
     return (
         <form
             onSubmit={submit}
-            className="space-y-6"
+            className="space-y-5 sm:space-y-6"
         >
             {/* PAGE HEADER */}
             <div>
@@ -253,26 +340,28 @@ export default function NewOrderPage() {
                     NEW ORDER
                 </p>
 
-                <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+                <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 sm:mt-2 sm:text-4xl">
                     สั่งซักผ้า
                 </h1>
 
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-slate-500 sm:block">
                     เลือกบริการ กำหนดรายละเอียดการซัก
                     และจุดรับส่งผ้าของคุณ
                 </p>
             </div>
 
-            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+            {/* STEPPER (มือถือ) */}
+            <Stepper step={step} onGo={goTo} />
+
+            <div className="grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
 
                 {/* LEFT */}
                 <section className={sectionCls}>
 
                     {/* =========================================
-                        STEP 01
-                        บริการ + ขนาด + รายการเสริม + น้ำยา
+                        STEP 01 — บริการ + ขนาด + รายการเสริม + น้ำยา
                     ========================================= */}
-                    <div>
+                    <div className={show(1)}>
                         <StepHeader
                             number="01"
                             title="เลือกบริการ"
@@ -280,7 +369,7 @@ export default function NewOrderPage() {
                         />
 
                         {/* SERVICE */}
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-2.5 sm:grid-cols-2">
                             {catalog.services.map((item) => (
                                 <label
                                     key={item.id}
@@ -307,7 +396,7 @@ export default function NewOrderPage() {
                                         </p>
 
                                         {item.description && (
-                                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                                            <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500">
                                                 {item.description}
                                             </p>
                                         )}
@@ -316,13 +405,13 @@ export default function NewOrderPage() {
                             ))}
                         </div>
 
-                        {/* SIZE */}
-                        <div className="mt-6">
-                            <p className="mb-3 text-sm font-semibold text-slate-700">
+                        {/* SIZE — ปุ่ม S / M / L เรียงแถวเดียว */}
+                        <div className="mt-5">
+                            <p className="mb-2.5 text-sm font-semibold text-slate-700">
                                 ขนาดถุงผ้า
                             </p>
 
-                            <div className="grid gap-3 sm:grid-cols-3">
+                            <div className="grid grid-cols-3 gap-2.5">
                                 {SIZES.map((item) => {
                                     const price =
                                         service?.prices.find(
@@ -333,7 +422,7 @@ export default function NewOrderPage() {
                                     return (
                                         <label
                                             key={item}
-                                            className={choiceCls(
+                                            className={chipCls(
                                                 size === item
                                             )}
                                         >
@@ -347,100 +436,107 @@ export default function NewOrderPage() {
                                                 onChange={() =>
                                                     setSize(item)
                                                 }
-                                                className="mt-1 size-4 shrink-0 accent-blue-600"
+                                                className="sr-only"
                                             />
 
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-slate-900">
-                                                        Size {item}
-                                                    </span>
+                                            <span className="text-xl font-black text-slate-900">
+                                                {item}
+                                            </span>
 
-                                                    <span className="text-sm font-semibold text-blue-600">
-                                                        {money(price)}
-                                                    </span>
-                                                </div>
-
-                                                <p className="mt-1 text-xs leading-5 text-slate-500">
-                                                    {SIZE_DESC[item]}
-                                                </p>
-                                            </div>
+                                            <span className="mt-0.5 text-xs font-semibold text-blue-600">
+                                                {money(price)}
+                                            </span>
                                         </label>
                                     )
                                 })}
                             </div>
+
+                            {/* คำอธิบายของขนาดที่เลือก (แสดงอันเดียวเพื่อลดความยาว) */}
+                            <p className="mt-2.5 rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs leading-5 text-slate-500">
+                                <span className="font-semibold text-slate-700">
+                                    Size {size}:
+                                </span>{' '}
+                                {SIZE_DESC[size]}
+                            </p>
                         </div>
 
                         {/* EXTRAS */}
-                        <div className="mt-6">
-                            <p className="mb-3 text-sm font-semibold text-slate-700">
-                                รายการเสริม
-                            </p>
+                        {catalog.items.length > 0 && (
+                            <div className="mt-5">
+                                <p className="mb-2.5 text-sm font-semibold text-slate-700">
+                                    รายการเสริม{' '}
+                                    <span className="font-normal text-slate-400">
+                                        (ไม่บังคับ)
+                                    </span>
+                                </p>
 
-                            <div className="space-y-3">
-                                {catalog.items.map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4"
-                                    >
-                                        <div className="min-w-0">
-                                            <p className="font-semibold text-slate-800">
-                                                {item.name}
-                                            </p>
+                                <div className="space-y-2">
+                                    {catalog.items.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 px-3.5 py-3"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-semibold text-slate-800">
+                                                    {item.name}
+                                                </p>
 
-                                            <p className="mt-1 text-xs text-slate-500">
-                                                {money(item.price)} / รายการ
-                                            </p>
+                                                <p className="text-xs text-slate-500">
+                                                    {money(item.price)} / รายการ
+                                                </p>
+                                            </div>
+
+                                            <div className="flex shrink-0 items-center rounded-lg border border-slate-200 bg-white">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        updateQty(
+                                                            item.id,
+                                                            -1
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        !qty[item.id]
+                                                    }
+                                                    aria-label="ลด"
+                                                    className="flex h-9 w-9 items-center justify-center text-lg text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
+                                                >
+                                                    −
+                                                </button>
+
+                                                <span className="w-7 text-center text-sm font-semibold text-slate-800">
+                                                    {qty[item.id] || 0}
+                                                </span>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        updateQty(
+                                                            item.id,
+                                                            1
+                                                        )
+                                                    }
+                                                    aria-label="เพิ่ม"
+                                                    className="flex h-9 w-9 items-center justify-center text-lg text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
                                         </div>
-
-                                        <div className="flex shrink-0 items-center rounded-lg border border-slate-200 bg-white">
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    updateQty(
-                                                        item.id,
-                                                        -1
-                                                    )
-                                                }
-                                                disabled={
-                                                    !qty[item.id]
-                                                }
-                                                className="flex h-9 w-9 items-center justify-center text-lg text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
-                                            >
-                                                −
-                                            </button>
-
-                                            <span className="w-8 text-center text-sm font-semibold text-slate-800">
-                                                {qty[item.id] || 0}
-                                            </span>
-
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    updateQty(
-                                                        item.id,
-                                                        1
-                                                    )
-                                                }
-                                                className="flex h-9 w-9 items-center justify-center text-lg text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
-                                            >
-                                                +
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* DETERGENT */}
-                        <div className="mt-6">
-                            <p className="mb-3 text-sm font-semibold text-slate-700">
+                        {/* DETERGENT — 2 ปุ่มเรียงแถวเดียว */}
+                        <div className="mt-5">
+                            <p className="mb-2.5 text-sm font-semibold text-slate-700">
                                 น้ำยาซักผ้า
                             </p>
 
-                            <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="grid grid-cols-2 gap-2.5">
                                 <label
-                                    className={choiceCls(
+                                    className={chipCls(
                                         detergent === 'Standard'
                                     )}
                                 >
@@ -457,22 +553,20 @@ export default function NewOrderPage() {
                                                 'Standard'
                                             )
                                         }
-                                        className="mt-1 size-4 shrink-0 accent-blue-600"
+                                        className="sr-only"
                                     />
 
-                                    <div>
-                                        <p className="font-semibold text-slate-900">
-                                            ใช้น้ำยาของร้าน
-                                        </p>
+                                    <span className="text-sm font-bold text-slate-900">
+                                        น้ำยาของร้าน
+                                    </span>
 
-                                        <p className="mt-1 text-xs leading-5 text-slate-500">
-                                            ใช้น้ำยามาตรฐานของ WashGo
-                                        </p>
-                                    </div>
+                                    <span className="mt-0.5 text-[11px] text-slate-500">
+                                        มาตรฐาน WashGo
+                                    </span>
                                 </label>
 
                                 <label
-                                    className={choiceCls(
+                                    className={chipCls(
                                         detergent ===
                                             'CustomerOwn'
                                     )}
@@ -490,52 +584,40 @@ export default function NewOrderPage() {
                                                 'CustomerOwn'
                                             )
                                         }
-                                        className="mt-1 size-4 shrink-0 accent-blue-600"
+                                        className="sr-only"
                                     />
 
-                                    <div>
-                                        <p className="font-semibold text-slate-900">
-                                            นำมาเอง
-                                        </p>
+                                    <span className="text-sm font-bold text-slate-900">
+                                        นำมาเอง
+                                    </span>
 
-                                        <p className="mt-1 text-xs leading-5 text-slate-500">
-                                            ลูกค้าจัดเตรียมน้ำยาเอง
-                                        </p>
-                                    </div>
-                                </label>
-                            </div>
-
-                            <div className="mt-4">
-                                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                                    รายละเอียดน้ำยา{' '}
-                                    <span className="font-normal text-slate-400">
-                                        (ไม่บังคับ)
+                                    <span className="mt-0.5 text-[11px] text-slate-500">
+                                        ลูกค้าเตรียมเอง
                                     </span>
                                 </label>
-
-                                <input
-                                    type="text"
-                                    maxLength={200}
-                                    value={detergentNote}
-                                    onChange={(e) =>
-                                        setDetergentNote(
-                                            e.target.value
-                                        )
-                                    }
-                                    placeholder="เช่น น้ำยาสำหรับผิวแพ้ง่าย"
-                                    className={inputCls}
-                                />
                             </div>
+
+                            <input
+                                type="text"
+                                maxLength={200}
+                                value={detergentNote}
+                                onChange={(e) =>
+                                    setDetergentNote(
+                                        e.target.value
+                                    )
+                                }
+                                placeholder="รายละเอียดน้ำยา (ไม่บังคับ) เช่น สำหรับผิวแพ้ง่าย"
+                                className={`${inputCls} mt-2.5`}
+                            />
                         </div>
                     </div>
 
-                    <div className="my-7 border-t border-slate-100" />
+                    <div className="my-7 hidden border-t border-slate-100 lg:block" />
 
                     {/* =========================================
-                        STEP 02
-                        จุดรับ + จุดส่ง
+                        STEP 02 — จุดรับ + จุดส่ง
                     ========================================= */}
-                    <div>
+                    <div className={show(2)}>
                         <StepHeader
                             number="02"
                             title="จุดรับ–ส่งผ้า"
@@ -585,7 +667,7 @@ export default function NewOrderPage() {
                                 </div>
 
                                 {/* SAME LOCATION */}
-                                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4">
+                                <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
                                     <input
                                         type="checkbox"
                                         checked={sameAsPickup}
@@ -594,7 +676,7 @@ export default function NewOrderPage() {
                                                 e.target.checked
                                             )
                                         }
-                                        className="mt-0.5 size-4 shrink-0 accent-blue-600"
+                                        className="size-4 shrink-0 accent-blue-600"
                                     />
 
                                     <div>
@@ -602,8 +684,8 @@ export default function NewOrderPage() {
                                             ใช้จุดรับเป็นจุดส่ง
                                         </p>
 
-                                        <p className="mt-1 text-xs text-slate-500">
-                                            Rider จะรับและส่งผ้าที่สถานที่เดียวกัน
+                                        <p className="text-xs text-slate-500">
+                                            รับและส่งผ้าที่สถานที่เดียวกัน
                                         </p>
                                     </div>
                                 </label>
@@ -655,13 +737,12 @@ export default function NewOrderPage() {
                         )}
                     </div>
 
-                    <div className="my-7 border-t border-slate-100" />
+                    <div className="my-7 hidden border-t border-slate-100 lg:block" />
 
                     {/* =========================================
-                        STEP 03
-                        รายละเอียด + ยืนยัน
+                        STEP 03 — รายละเอียด + ยืนยัน
                     ========================================= */}
-                    <div>
+                    <div className={show(3)}>
                         <StepHeader
                             number="03"
                             title="รายละเอียดและยืนยัน"
@@ -686,12 +767,12 @@ export default function NewOrderPage() {
                                     )
                                 }
                                 placeholder="เช่น ผ้าสีตก ห้ามอบร้อน หรือมีเสื้อผ้าที่ต้องดูแลเป็นพิเศษ"
-                                className={`${inputCls} min-h-[120px] resize-none`}
+                                className={`${inputCls} min-h-[96px] resize-none sm:min-h-[120px]`}
                             />
                         </div>
 
                         {/* DAMAGE TERMS */}
-                        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4">
+                        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 p-4">
                             <input
                                 type="checkbox"
                                 checked={accepted}
@@ -710,33 +791,71 @@ export default function NewOrderPage() {
                                 ไม่รับผิดชอบ)
                             </span>
                         </label>
+                    </div>
 
-                        {/* ERROR */}
-                        {error && (
-                            <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {/* =========================================
+                        ปุ่มนำทางขั้นตอน (มือถือ/แท็บเล็ต)
+                    ========================================= */}
+                    <div className="mt-6 border-t border-slate-100 pt-4 lg:hidden">
+                        {error && step < 3 && (
+                            <div className="mb-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
                                 {error}
                             </div>
                         )}
+
+                        {step < 3 && (
+                            <p className="mb-3 flex items-center justify-between text-sm">
+                                <span className="text-slate-500">
+                                    รวมโดยประมาณ
+                                </span>
+                                <span className="text-lg font-bold text-slate-900">
+                                    {money(estimate.total)}
+                                </span>
+                            </p>
+                        )}
+
+                        <div className="flex gap-3">
+                            {step > 1 && (
+                                <button
+                                    type="button"
+                                    onClick={() => goTo(step - 1)}
+                                    className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                                >
+                                    ย้อนกลับ
+                                </button>
+                            )}
+
+                            {step < 3 && (
+                                <button
+                                    type="button"
+                                    onClick={goNext}
+                                    className="flex-1 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm shadow-blue-600/30 transition hover:bg-blue-700 active:scale-[0.98]"
+                                >
+                                    ถัดไป →
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </section>
 
                 {/* =========================================
                     RIGHT - SUMMARY
+                    (มือถือ: แสดงเฉพาะขั้นสุดท้าย / จอใหญ่: แสดงตลอด)
                 ========================================= */}
-                <aside className="lg:sticky lg:top-24">
-                    <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+                <aside className={`lg:sticky lg:top-24 ${show(3)}`}>
+                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
 
-                        <div className="border-b border-slate-200 px-6 py-5">
+                        <div className="border-b border-slate-200 px-5 py-4 sm:px-6 sm:py-5">
                             <p className="text-xs font-bold tracking-[0.15em] text-slate-400">
                                 ORDER SUMMARY
                             </p>
 
-                            <h2 className="mt-1 text-xl font-bold text-slate-900">
+                            <h2 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">
                                 สรุปรายการสั่งซัก
                             </h2>
                         </div>
 
-                        <div className="space-y-5 p-6">
+                        <div className="space-y-5 p-5 sm:p-6">
 
                             {/* SERVICE SUMMARY */}
                             <div className="border-b border-slate-100 pb-5">
@@ -828,4 +947,3 @@ export default function NewOrderPage() {
         </form>
     )
 }
-

@@ -71,7 +71,7 @@ export default function LoginPage() {
                     <div className="w-full max-w-md">
                         <div className="flex items-center justify-center mb-7">
                             <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center overflow-hidden">
-                                <img src="/images/WashGo-logo.png" alt="WashGo" className="w-11 h-11 object-contain" />
+                                <img src="/images/logo (2).png" alt="WashGo" className="w-11 h-11 object-contain" />
                             </div>
                         </div>
 
