@@ -315,6 +315,76 @@ namespace WashGOApi.Migrations
                     b.ToTable("CatalogItems");
                 });
 
+            modelBuilder.Entity("WashGOApi.Models.ChatMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Body")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImagePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SenderId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ThreadId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("ThreadId", "Id");
+
+                    b.ToTable("ChatMessages");
+                });
+
+            modelBuilder.Entity("WashGOApi.Models.ChatThread", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastMessageAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.ToTable("ChatThreads");
+                });
+
             modelBuilder.Entity("WashGOApi.Models.Location", b =>
                 {
                     b.Property<int>("Id")
@@ -818,6 +888,35 @@ namespace WashGOApi.Migrations
                     b.Navigation("Actor");
                 });
 
+            modelBuilder.Entity("WashGOApi.Models.ChatMessage", b =>
+                {
+                    b.HasOne("WashGOApi.Models.ApplicationUser", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WashGOApi.Models.ChatThread", "Thread")
+                        .WithMany("Messages")
+                        .HasForeignKey("ThreadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Sender");
+
+                    b.Navigation("Thread");
+                });
+
+            modelBuilder.Entity("WashGOApi.Models.ChatThread", b =>
+                {
+                    b.HasOne("WashGOApi.Models.Order", "Order")
+                        .WithOne()
+                        .HasForeignKey("WashGOApi.Models.ChatThread", "OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("WashGOApi.Models.Location", b =>
                 {
                     b.HasOne("WashGOApi.Models.ApplicationUser", "User")
@@ -976,6 +1075,11 @@ namespace WashGOApi.Migrations
             modelBuilder.Entity("WashGOApi.Models.ApplicationUser", b =>
                 {
                     b.Navigation("RiderProfile");
+                });
+
+            modelBuilder.Entity("WashGOApi.Models.ChatThread", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("WashGOApi.Models.Order", b =>

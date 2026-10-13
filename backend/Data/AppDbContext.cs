@@ -19,6 +19,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<ChatThread> ChatThreads => Set<ChatThread>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
     {
@@ -55,6 +57,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasIndex(p => new { p.ServiceTypeId, p.Size }).IsUnique();
             e.HasOne(p => p.ServiceType).WithMany(s => s.Prices)
              .HasForeignKey(p => p.ServiceTypeId);
+        });
+        
+        b.Entity<ChatThread>(e =>
+        {
+            // 1 ออเดอร์ = 1 ห้อง (WithOne สร้าง unique index ให้เอง)
+            e.HasOne(t => t.Order).WithOne().HasForeignKey<ChatThread>(t => t.OrderId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ChatMessage>(e =>
+        {
+            e.Property(m => m.Type).HasConversion<string>().HasMaxLength(10);
+            e.Property(m => m.Body).HasMaxLength(1000);
+            e.Property(m => m.ImagePath).HasMaxLength(500);
+            e.HasIndex(m => new { m.ThreadId, m.Id });   // โหลดประวัติแบบแบ่งหน้า
+            e.HasOne(m => m.Thread).WithMany(t => t.Messages)
+             .HasForeignKey(m => m.ThreadId).OnDelete(DeleteBehavior.Cascade);
+            // แชทเป็นหลักฐาน ลบผู้ใช้แล้วต้องไม่พาข้อความหายตาม
+            e.HasOne(m => m.Sender).WithMany()
+             .HasForeignKey(m => m.SenderId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<Payment>(e =>

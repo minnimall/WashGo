@@ -14,6 +14,8 @@ import {
 import CustomerPaymentPanel from "../components/CustomerPaymentPanel";
 import LaundryPhotosCard from "../components/LaundryPhotosCard";
 import RiderTrackingCard from "../components/RiderTrackingCard";
+import ChatCard from '../components/ChatCard';
+import ChatToggle from '../components/ChatToggle';
 
 const cardCls =
   "rounded-2xl border border-slate-200 bg-white shadow-sm";
@@ -128,6 +130,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false)
 
   const load = useCallback(
     () =>
@@ -241,7 +244,14 @@ export default function OrderDetailPage() {
           </div>
 
           <StatusBadge status={order.status} />
+          {order.riderName && (
+            <ChatToggle orderId={order.id} me="Customer" open={chatOpen} onToggle={() => setChatOpen((v) => !v)} />
+          )}
         </div>
+
+        {chatOpen && order.riderName && (
+            <ChatCard orderId={order.id} me="Customer" orderStatus={order.status} onClose={() => setChatOpen(false)} />
+          )}
 
         {/* Summary */}
         <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">

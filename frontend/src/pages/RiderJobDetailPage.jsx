@@ -20,6 +20,8 @@ import {
   money,
 } from "../utils";
 import { btn } from "../ui";
+import ChatCard from '../components/ChatCard'
+import ChatToggle from '../components/ChatToggle'
 
 const TO_PICKUP = ["Accepted", "GoingToPickup"];
 const TO_DELIVERY = ["WashingCompleted", "Delivering"];
@@ -86,6 +88,7 @@ export default function RiderJobDetailPage() {
   const [job, setJob] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false)
 
   const status = job?.status;
 
@@ -258,7 +261,12 @@ export default function RiderJobDetailPage() {
           </div>
 
           <StatusBadge status={job.status} />
+          <ChatToggle orderId={job.id} me="Rider" open={chatOpen} onToggle={() => setChatOpen((v) => !v)} />
         </div>
+
+        {chatOpen && (
+          <ChatCard orderId={job.id} me="Rider" orderStatus={job.status} onClose={() => setChatOpen(false)} />
+        )}
 
         {/* Summary */}
         <div className="grid grid-cols-2 divide-x divide-gray-100 sm:grid-cols-4">
@@ -676,11 +684,12 @@ export default function RiderJobDetailPage() {
         </div>
       </section>
 
+      
+
       {/* ================= ALL PHOTOS ================= */}
       <section className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-4">
           <p className="text-xs font-medium text-gray-500">DOCUMENTATION</p>
-
           <h2 className="mt-0.5 text-base font-bold text-gray-900">
             รูปถ่ายทั้งหมด
           </h2>

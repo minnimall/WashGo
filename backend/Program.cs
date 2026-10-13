@@ -18,8 +18,10 @@ builder.Services.AddControllers()
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+builder.Services.AddSingleton<ChatSystemInterceptor>();
+builder.Services.AddDbContext<AppDbContext>((sp, o) =>
+    o.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
+     .AddInterceptors(sp.GetRequiredService<ChatSystemInterceptor>()));
 
 builder.Services.AddIdentityCore<ApplicationUser>(o =>
     {
@@ -35,6 +37,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(o =>
 builder.Services.AddSingleton<JwtService>();
 builder.Services.AddSingleton<PiiProtector>();
 builder.Services.AddMemoryCache();
+builder.Services.AddSignalR();
 builder.Services.AddHttpClient<StorageService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -163,5 +166,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();
