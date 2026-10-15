@@ -48,7 +48,13 @@ export default function Layout() {
                 { to: '/rider', label: 'บัญชี Rider', end: true },
             ]
             : []),
-        ...(isAdmin ? [{ to: '/admin/riders', label: 'ตรวจสอบ Rider' }] : []),
+        ...(isAdmin
+            ? [
+                { to: '/', label: 'ภาพรวม', end: true },
+                { to: '/admin/users', label: 'จัดการผู้ใช้' },
+                { to: '/admin/riders', label: 'ตรวจสอบ Rider' },
+            ]
+            : []),
     ]
 
     const hasNav = navLinks.length > 0
@@ -104,9 +110,9 @@ export default function Layout() {
                         {/* Logo */}
                         <NavLink to="/" className="flex items-center gap-3 shrink-0 group">
                             <img
-                                src="/images/logowashgo.png"
+                                src="/images/logo3.png"
                                 alt="WashGo"
-                                className="h-20 w-20 object-contain transition-all duration-300 group-hover:-translate-y-0.5 group-hover:scale-105"
+                                className="h-30 w-30 object-contain transition-all duration-300 group-hover:-translate-y-0.5 group-hover:scale-105"
                             />
                         </NavLink>
 
@@ -242,7 +248,7 @@ export default function Layout() {
             </header>
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="mx-auto max-w-6xl px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 lg:pb-10">
                 <Outlet />
             </main>
 

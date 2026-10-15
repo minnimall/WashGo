@@ -15,12 +15,14 @@ import AdminRidersPage from './pages/AdminRidersPage'
 import CustomerHomePage from './pages/CustomerHomePage'
 import RiderHomePage from './pages/RiderHomePage'
 import RiderEarningsPage from './pages/RiderEarningsPage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
+import AdminUsersPage from './pages/AdminUsersPage'
 
 function Home() {
   const { user } = useAuth()
       if (user.roles.includes('Customer')) return <CustomerHomePage />
       if (user.roles.includes('Rider')) return <RiderHomePage />
-      if (user.roles.includes('Admin')) return <Navigate to="/admin/riders" replace />
+      if (user.roles.includes('Admin')) return <AdminDashboardPage />
 
   return (
     <div className="card">
@@ -49,7 +51,7 @@ export default function App() {
             <Route path="/rider/jobs" element={<RequireRole role="Rider"><RiderJobsPage /></RequireRole>} />
             <Route path="/rider/jobs/:id" element={<RequireRole role="Rider"><RiderJobDetailPage /></RequireRole>} />
             <Route path="/rider/earnings" element={<RequireRole role="Rider"><RiderEarningsPage /></RequireRole>} />
-            
+            <Route path="/admin/users" element={<RequireRole role="Admin"><AdminUsersPage /></RequireRole>} />
             <Route path="/admin/riders" element={<RequireRole role="Admin"><AdminRidersPage /></RequireRole>} />
           </Route>
 

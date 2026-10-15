@@ -4,7 +4,11 @@ import api from '../api'
 import { errorText, money, SIZE_DESC } from '../utils'
 
 const SIZES = ['S', 'M', 'L']
-const STEP_LABELS = ['บริการ', 'รับ–ส่ง', 'ยืนยัน']
+const STEPS = [
+    { label: 'บริการ', image: '/images/ตะกร้าผ้า.png' },
+    { label: 'รับ–ส่ง', image: '/images/มอไซ(1).png' },
+    { label: 'ยืนยัน', image: '/images/confirm2.png' },
+]
 
 const inputCls =
     'w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100'
@@ -82,7 +86,7 @@ function StepHeader({ number, title, description }) {
 function Stepper({ step, onGo }) {
     return (
         <ol className="flex items-start lg:hidden">
-            {STEP_LABELS.map((label, i) => {
+            {STEPS.map(({ label, image }, i) => {
                 const n = i + 1
                 const done = n < step
                 const active = n === step
@@ -95,6 +99,21 @@ function Stepper({ step, onGo }) {
                             onClick={() => onGo(n)}
                             className="flex flex-col items-center gap-1 disabled:cursor-default"
                         >
+                            {/* รูปด้านบนตัวเลข */}
+                            {image && (
+                                <img
+                                    src={image}
+                                    alt=""
+                                    className={`h-10 w-10 rounded-xl object-cover transition-all mb-3 ${
+                                        active
+                                            ? 'opacity-100 ring-2 ring-blue-600 ring-offset-2'
+                                            : done
+                                              ? 'opacity-90'
+                                              : 'opacity-40 grayscale'
+                                    }`}
+                                />
+                            )}
+
                             <span
                                 className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-all ${
                                     active
@@ -106,6 +125,7 @@ function Stepper({ step, onGo }) {
                             >
                                 {done ? '✓' : n}
                             </span>
+
                             <span
                                 className={`text-[11px] font-semibold ${
                                     active ? 'text-blue-600' : 'text-slate-400'
@@ -115,9 +135,10 @@ function Stepper({ step, onGo }) {
                             </span>
                         </button>
 
-                        {n < STEP_LABELS.length && (
+                        {n < STEPS.length && (
+                            // รูป 40px + gap 4px + ครึ่งวงกลม 16px = 60px
                             <span
-                                className={`mx-2 mt-4 h-0.5 flex-1 rounded-full ${
+                                className={`mx-2 mt-[60px] h-0.5 flex-1 rounded-full ${
                                     done ? 'bg-blue-300' : 'bg-slate-200'
                                 }`}
                             />

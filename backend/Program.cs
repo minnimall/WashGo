@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -108,7 +109,16 @@ builder.Services.AddCors(o => o.AddPolicy("Frontend", p =>
     p.WithOrigins("http://localhost:5173")
     .AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 
+// Render ทำ HTTPS ที่ proxy แล้วส่ง HTTP เข้ามาที่แอป ต้องอ่าน X-Forwarded-* ไม่งั้นจะ redirect HTTPS วนซ้ำ
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownNetworks.Clear();   // IP ของ proxy บน Render ไม่คงที่
+    o.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+app.UseForwardedHeaders();   // ต้องมาก่อน middleware อื่น
 
 // ตรวจค่าลับให้ครบตั้งแต่เริ่มแอป ถ้าขาดจะล้มทันที ไม่ไปพังตอนผู้ใช้อัปโหลด
 _ = app.Services.GetRequiredService<PiiProtector>();
@@ -167,5 +177,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
+app.MapGet("/healthz", () => Results.Ok()).AllowAnonymous();   // ให้ Render ตรวจสุขภาพ (ไม่แตะฐานข้อมูล)
 
 app.Run();

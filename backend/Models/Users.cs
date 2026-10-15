@@ -8,6 +8,7 @@ public class ApplicationUser : IdentityUser
     public string FullName { get; set; } = "";
     public bool IsSuspended { get; set; }
     public string? SuspendedReason { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
     public RiderProfile? RiderProfile { get; set; }
 }

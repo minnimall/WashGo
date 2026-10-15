@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api'
+import useAutoRefresh from '../useAutoRefresh'
 import StatusBadge from '../components/StatusBadge'
 import { dateTime, errorText, money } from '../utils'
-import useAutoRefresh from '../useAutoRefresh'
 
 const ACTIVE = ['Pending', 'Confirmed', 'Processing', 'Washing', 'Ready']
 const DONE = ['Completed', 'Delivered']
@@ -19,6 +19,12 @@ const PROGRESS = {
     Delivered: 100,
 }
 
+const FILTERS = [
+    { key: 'all', label: 'ทั้งหมด' },
+    { key: 'active', label: 'กำลังดำเนินการ' },
+    { key: 'done', label: 'เสร็จสิ้น' },
+]
+
 /* ---------- small pieces ---------- */
 
 function Icon({ name, className = 'h-5 w-5' }) {
@@ -31,28 +37,8 @@ function Icon({ name, className = 'h-5 w-5' }) {
         viewBox: '0 0 24 24',
         className,
     }
+
     switch (name) {
-        case 'home':
-            return (
-                <svg {...p}>
-                    <path d="M3 11l9-8 9 8" />
-                    <path d="M5 10v10h14V10" />
-                </svg>
-            )
-        case 'plus':
-            return (
-                <svg {...p}>
-                    <rect x="3" y="3" width="18" height="18" rx="5" />
-                    <path d="M12 8v8M8 12h8" />
-                </svg>
-            )
-        case 'pin':
-            return (
-                <svg {...p}>
-                    <path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" />
-                    <circle cx="12" cy="9.5" r="2.5" />
-                </svg>
-            )
         case 'list':
             return (
                 <svg {...p}>
@@ -81,18 +67,10 @@ function Icon({ name, className = 'h-5 w-5' }) {
                     <path d="M20 4v5h-5" />
                 </svg>
             )
-        case 'gift':
+        case 'plus':
             return (
                 <svg {...p}>
-                    <rect x="3" y="8" width="18" height="4" rx="1" />
-                    <path d="M12 8v13M5 12v9h14v-9" />
-                    <path d="M12 8c-2-4-6-3-5 0M12 8c2-4 6-3 5 0" />
-                </svg>
-            )
-        case 'drop':
-            return (
-                <svg {...p}>
-                    <path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z" />
+                    <path d="M12 5v14M5 12h14" />
                 </svg>
             )
         default:
@@ -100,84 +78,51 @@ function Icon({ name, className = 'h-5 w-5' }) {
     }
 }
 
-function ProgressBar({ value, tone = 'violet' }) {
-    const color = tone === 'green' ? 'bg-emerald-500' : 'bg-violet-500'
+function ProgressBar({ value, done }) {
     return (
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
             <div
-                className={`h-full rounded-full ${color} transition-all duration-700`}
+                className={`h-full rounded-full transition-all duration-700 ${
+                    done ? 'bg-emerald-500' : 'bg-blue-600'
+                }`}
                 style={{ width: `${value}%` }}
             />
         </div>
     )
 }
 
-/* ภาพประกอบเครื่องซักผ้า (CSS ล้วน) */
-function WasherIllustration() {
+function StatCard({ label, value, tone }) {
     return (
-        <div className="relative h-32 w-32 shrink-0 sm:h-40 sm:w-40">
-            <div className="absolute inset-0 rounded-full bg-white/40 blur-2xl" />
-            <div className="absolute left-3 top-2 h-28 w-24 rotate-3 rounded-3xl bg-white shadow-xl shadow-violet-400/30 sm:h-36 sm:w-28">
-                <div className="flex items-center gap-1.5 px-3 pt-3">
-                    <span className="h-2 w-2 rounded-full bg-violet-400" />
-                    <span className="h-2 w-2 rounded-full bg-violet-200" />
-                    <span className="ml-auto h-3 w-5 rounded bg-violet-100" />
-                </div>
-                <div className="mx-auto mt-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 sm:h-[72px] sm:w-[72px]">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-sky-300 to-violet-500 sm:h-14 sm:w-14">
-                        <div className="h-5 w-5 rounded-full border-[3px] border-white/60" />
-                    </div>
-                </div>
-            </div>
-            <span className="absolute right-0 top-0 h-7 w-7 animate-bounce rounded-full border border-white/70 bg-white/50" />
-            <span className="absolute bottom-3 right-2 h-4 w-4 animate-pulse rounded-full bg-white/70" />
-            <span className="absolute left-0 top-16 h-3 w-3 animate-pulse rounded-full bg-white/60" />
+        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm sm:px-6 sm:py-5">
+            <p className="text-xs font-semibold text-slate-400">{label}</p>
+            <p className={`mt-1 text-2xl font-black sm:text-3xl ${tone}`}>
+                {value}
+            </p>
         </div>
     )
 }
 
-function Card({ className = '', children }) {
-    return (
-        <div className={`rounded-3xl bg-white p-5 shadow-[0_8px_30px_rgba(124,92,240,0.07)] ring-1 ring-slate-100 ${className}`}>
-            {children}
-        </div>
-    )
-}
+/* ไอคอนรูปภาพของออเดอร์ — ถ้าโหลดรูปไม่ได้ จะใช้ไอคอน SVG แทน */
+function OrderIcon({ done }) {
+    const [failed, setFailed] = useState(false)
 
-function SectionHead({ title, action }) {
     return (
-        <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-extrabold text-slate-900 sm:text-lg">{title}</h2>
-            {action}
+        <div
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl sm:h-14 sm:w-14 ${
+                done ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+            }`}
+        >
+            {failed ? (
+                <Icon name={done ? 'check' : 'spin'} className="h-6 w-6" />
+            ) : (
+                <img
+                    src="/images/ตะกร้าผ้า.png"
+                    alt=""
+                    onError={() => setFailed(true)}
+                    className="h-8 w-8 object-contain sm:h-10 sm:w-10"
+                />
+            )}
         </div>
-    )
-}
-
-/* แถบเมนูล่าง — แสดงเฉพาะบนมือถือ */
-function MobileTabBar() {
-    const tabs = [
-        { to: '/orders', icon: 'home', label: 'หน้าแรก', active: true },
-        { to: '/orders/new', icon: 'plus', label: 'สั่งซัก' },
-        { to: '/locations', icon: 'pin', label: 'ที่อยู่' },
-        { to: '/orders', icon: 'list', label: 'ออเดอร์' },
-    ]
-    return (
-        <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-100 bg-white/95 backdrop-blur lg:hidden">
-            <div className="mx-auto flex max-w-md items-center justify-around px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
-                {tabs.map((t) => (
-                    <Link
-                        key={t.label}
-                        to={t.to}
-                        className={`flex w-16 flex-col items-center gap-0.5 text-[11px] font-semibold ${
-                            t.active ? 'text-violet-600' : 'text-slate-400'
-                        }`}
-                    >
-                        <Icon name={t.icon} className="h-6 w-6" />
-                        {t.label}
-                    </Link>
-                ))}
-            </div>
-        </nav>
     )
 }
 
@@ -186,280 +131,319 @@ function MobileTabBar() {
 export default function OrdersPage() {
     const [data, setData] = useState(null)
     const [error, setError] = useState('')
+    const [filter, setFilter] = useState('all')
 
-    useEffect(() => {
-        api.get('/orders')
-            .then((res) => setData(res.data))
-            .catch((err) => setError(errorText(err)))
-    }, [])
-
-    useAutoRefresh(async () => {
+    const load = useCallback(async () => {
         try {
             const res = await api.get('/orders')
-            setData(res.data)
-        } catch { /* ข้ามรอบนี้ */ }
-    }, { interval: 8000 })
+            const d = res.data
+            setData(
+                Array.isArray(d)
+                    ? { items: d, total: d.length }
+                    : { items: d.items ?? [], total: d.total ?? d.items?.length ?? 0 }
+            )
+            setError('')
+        } catch (err) {
+            setError(errorText(err))
+        }
+    }, [])
 
-    const orders = data?.items || []
-    const totalOrders = data?.total || 0
-    const activeOrders = orders.filter((o) => ACTIVE.includes(o.status)).length
-    const completedOrders = orders.filter((o) => DONE.includes(o.status)).length
+    useAutoRefresh(load, { interval: 8000 })
 
-    const latestActive = orders.find((o) => ACTIVE.includes(o.status))
-    const goalPercent = totalOrders ? Math.round((completedOrders / totalOrders) * 100) : 0
+    const orders = data?.items ?? []
+    const totalOrders = data?.total ?? 0
+    const activeOrders = orders.filter((o) => ACTIVE.includes(o.status))
+    const completedOrders = orders.filter((o) => DONE.includes(o.status))
+    const latestActive = activeOrders[0]
+
+    const visible = useMemo(() => {
+        if (filter === 'active') return activeOrders
+        if (filter === 'done') return completedOrders
+        return orders
+    }, [filter, orders, activeOrders, completedOrders])
+
+    const counts = {
+        all: orders.length,
+        active: activeOrders.length,
+        done: completedOrders.length,
+    }
 
     return (
-        <div className="min-h-screen bg-[#f6f4ff]">
-            <div className="mx-auto max-w-6xl px-4 pb-28 pt-5 sm:px-6 lg:pb-12 lg:pt-8">
+        <div className="space-y-6 sm:space-y-8">
 
-                {/* Header */}
-                <header className="mb-5 flex items-center justify-between gap-3 lg:mb-7">
-                    <div>
-                        <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl lg:text-3xl">
-                            สวัสดี 👋
-                        </h1>
-                        <p className="mt-0.5 text-sm text-slate-500">วันนี้อยากซักอะไรดี?</p>
+            {/* PAGE HEADER */}
+            <section className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                    <p className="text-xs font-bold tracking-[0.2em] text-blue-600">
+                        MY ORDERS
+                    </p>
+
+                    <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 sm:mt-2 sm:text-4xl">
+                        ออเดอร์ของฉัน
+                    </h1>
+
+                    <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-slate-500 sm:block">
+                        ติดตามสถานะการซักผ้าและดูประวัติออเดอร์ทั้งหมดของคุณ
+                    </p>
+                </div>
+
+                <Link
+                    to="/orders/new"
+                    className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl active:translate-y-0 active:scale-95"
+                >
+                    <Icon name="plus" className="h-4 w-4" />
+                    สั่งซักผ้า
+                </Link>
+            </section>
+
+            {/* ERROR */}
+            {error && (
+                <div className="flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-700">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100 font-bold">
+                        !
+                    </span>
+                    <span>{error}</span>
+                </div>
+            )}
+
+            {/* LOADING */}
+            {!data && !error && (
+                <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                        {[1, 2, 3].map((i) => (
+                            <div
+                                key={i}
+                                className="h-20 animate-pulse rounded-2xl bg-slate-200/70 sm:h-24"
+                            />
+                        ))}
                     </div>
+                    {[1, 2, 3].map((i) => (
+                        <div
+                            key={i}
+                            className="h-28 animate-pulse rounded-2xl bg-slate-200/70"
+                        />
+                    ))}
+                </div>
+            )}
 
-                    <div className="flex items-center gap-2 rounded-full bg-white px-3.5 py-2 text-sm font-bold text-violet-600 shadow-sm ring-1 ring-slate-100">
-                        <Icon name="drop" className="h-4 w-4" />
-                        {activeOrders} กำลังดำเนินการ
-                    </div>
-                </header>
+            {data && (
+                <>
+                    {/* STATS */}
+                    <section className="grid grid-cols-3 gap-3 sm:gap-4">
+                        <StatCard
+                            label="ทั้งหมด"
+                            value={totalOrders}
+                            tone="text-slate-900"
+                        />
+                        <StatCard
+                            label="กำลังดำเนินการ"
+                            value={activeOrders.length}
+                            tone="text-blue-600"
+                        />
+                        <StatCard
+                            label="เสร็จสิ้น"
+                            value={completedOrders.length}
+                            tone="text-emerald-600"
+                        />
+                    </section>
 
-                {/* Error */}
-                {error && (
-                    <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-700">
-                        <span className="font-bold">!</span>
-                        <span>{error}</span>
-                    </div>
-                )}
+                    {/* LATEST ACTIVE ORDER */}
+                    {latestActive && (
+                        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 p-5 text-slate-900 shadow-sm ring-1 ring-blue-100 sm:p-7">
+                            <div className="pointer-events-none absolute inset-0">
+                                <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/70" />
+                                <div className="absolute -bottom-24 right-32 h-56 w-56 rounded-full bg-blue-200/40" />
+                            </div>
 
-                {/* Loading */}
-                {!data && !error && (
-                    <div className="grid gap-5 lg:grid-cols-3">
-                        <div className="h-52 animate-pulse rounded-3xl bg-white lg:col-span-2" />
-                        <div className="h-52 animate-pulse rounded-3xl bg-white" />
-                        <div className="h-64 animate-pulse rounded-3xl bg-white lg:col-span-2" />
-                        <div className="h-64 animate-pulse rounded-3xl bg-white" />
-                    </div>
-                )}
+                            <div className="relative z-10 flex flex-wrap items-center justify-between gap-5">
+                                <div className="min-w-0 flex-1 basis-64">
+                                    <p className="text-sm font-medium text-blue-600">
+                                        ออเดอร์ล่าสุดที่กำลังดำเนินการ
+                                    </p>
 
-                {data && (
-                    <div className="grid gap-5 lg:grid-cols-3 lg:gap-6">
+                                    <h2 className="mt-1 text-xl font-semibold sm:text-2xl">
+                                        {latestActive.serviceName}
+                                    </h2>
 
-                        {/* ===== คอลัมน์หลัก ===== */}
-                        <div className="space-y-5 lg:col-span-2 lg:space-y-6">
-
-                            {/* Hero */}
-                            <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-violet-200 via-violet-300 to-indigo-300 p-5 sm:p-7">
-                                <div className="relative z-10 flex items-center justify-between gap-4">
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-xs font-semibold text-violet-900/70 sm:text-sm">
-                                            {latestActive ? 'ติดตามต่อจากครั้งที่แล้ว' : 'เริ่มต้นใช้บริการ'}
-                                        </p>
-
-                                        <h2 className="mt-1 text-xl font-black leading-tight text-slate-900 sm:text-3xl">
-                                            {latestActive ? latestActive.serviceName : 'ซักผ้าให้เป็นเรื่องง่าย'}
-                                        </h2>
-
-                                        {latestActive ? (
-                                            <div className="mt-4 max-w-xs">
-                                                <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-800">
-                                                    <span>{latestActive.orderNo}</span>
-                                                    <span>{PROGRESS[latestActive.status] ?? 0}%</span>
-                                                </div>
-                                                <div className="h-2 overflow-hidden rounded-full bg-white/60">
-                                                    <div
-                                                        className="h-full rounded-full bg-violet-600 transition-all duration-700"
-                                                        style={{ width: `${PROGRESS[latestActive.status] ?? 0}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <p className="mt-2 max-w-xs text-sm leading-6 text-violet-900/70">
-                                                สั่งซัก ติดตามสถานะ และรับผ้ากลับคืนได้ในที่เดียว
-                                            </p>
-                                        )}
-
-                                        <Link
-                                            to={latestActive ? `/orders/${latestActive.id}` : '/orders/new'}
-                                            className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-violet-700 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg"
-                                        >
-                                            {latestActive ? 'ติดตามออเดอร์' : 'สั่งซักผ้า'}
-                                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-white">
-                                                <Icon name="chevron" className="h-3 w-3" />
+                                    <div className="mt-4 max-w-sm">
+                                        <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700">
+                                            <span>{latestActive.orderNo}</span>
+                                            <span>
+                                                {PROGRESS[latestActive.status] ?? 0}%
                                             </span>
-                                        </Link>
-                                    </div>
-
-                                    <WasherIllustration />
-                                </div>
-                            </section>
-
-                            {/* Orders */}
-                            <section>
-                                <SectionHead
-                                    title="ออเดอร์ของฉัน"
-                                    action={
-                                        totalOrders > 0 && (
-                                            <Link to="/orders" className="text-sm font-bold text-violet-600 hover:text-violet-700">
-                                                ดูทั้งหมด
-                                            </Link>
-                                        )
-                                    }
-                                />
-
-                                {orders.length === 0 && (
-                                    <Card className="py-10 text-center">
-                                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-50 text-violet-500">
-                                            <Icon name="plus" className="h-7 w-7" />
                                         </div>
-                                        <h3 className="mt-4 text-lg font-bold text-slate-800">ยังไม่มีออเดอร์</h3>
-                                        <p className="mx-auto mt-1 max-w-xs text-sm text-slate-500">
-                                            เริ่มต้นด้วยการสร้างออเดอร์ซักผ้ารายการแรกของคุณ
-                                        </p>
-                                        <Link
-                                            to="/orders/new"
-                                            className="mt-5 inline-flex rounded-full bg-violet-600 px-6 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-violet-700"
-                                        >
-                                            สั่งซักผ้า
-                                        </Link>
-                                    </Card>
-                                )}
 
-                                {orders.length > 0 && (
-                                    <div className="divide-y divide-slate-100 overflow-hidden rounded-3xl bg-white shadow-[0_8px_30px_rgba(124,92,240,0.07)] ring-1 ring-slate-100">
-                                        {orders.slice(0, 5).map((o) => {
-                                            const done = DONE.includes(o.status)
-                                            const pct = PROGRESS[o.status] ?? 0
-                                            return (
-                                                <Link
-                                                    key={o.id}
-                                                    to={`/orders/${o.id}`}
-                                                    className="group flex items-center gap-3 p-4 transition hover:bg-violet-50/50 sm:gap-4 sm:p-5"
-                                                >
-                                                    <div
-                                                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
-                                                            done ? 'bg-emerald-50 text-emerald-500' : 'bg-violet-50 text-violet-500'
-                                                        }`}
-                                                    >
-                                                        <Icon name={done ? 'check' : 'spin'} className="h-6 w-6" />
-                                                    </div>
-
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                                                            <strong className="text-sm font-bold text-slate-900">{o.orderNo}</strong>
-                                                            <StatusBadge status={o.status} />
-                                                        </div>
-                                                        <p className="mt-0.5 truncate text-xs text-slate-500">
-                                                            {o.serviceName} · ไซส์ {o.size}
-                                                        </p>
-                                                        <div className="mt-2.5 flex items-center gap-2.5">
-                                                            <ProgressBar value={pct} tone={done ? 'green' : 'violet'} />
-                                                            <span className="w-9 shrink-0 text-right text-[11px] font-semibold text-slate-400">
-                                                                {pct}%
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="hidden text-right sm:block">
-                                                        <p className="text-sm font-bold text-slate-900">{money(o.totalPrice)}</p>
-                                                        <p className="mt-0.5 text-[11px] text-slate-400">{dateTime(o.createdAt)}</p>
-                                                    </div>
-
-                                                    <Icon
-                                                        name="chevron"
-                                                        className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-violet-500"
-                                                    />
-                                                </Link>
-                                            )
-                                        })}
+                                        <div className="h-2 overflow-hidden rounded-full bg-white/70">
+                                            <div
+                                                className="h-full rounded-full bg-blue-600 transition-all duration-700"
+                                                style={{
+                                                    width: `${PROGRESS[latestActive.status] ?? 0}%`,
+                                                }}
+                                            />
+                                        </div>
                                     </div>
-                                )}
+                                </div>
 
-                                {data.total > 5 && (
-                                    <div className="mt-4 text-center">
-                                        <Link
-                                            to="/orders"
-                                            className="inline-flex rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+                                <Link
+                                    to={`/orders/${latestActive.id}`}
+                                    className="group relative inline-flex items-center gap-2 overflow-hidden rounded-2xl border border-blue-600/30 bg-white/40 px-6 py-2.5 text-sm font-semibold text-blue-700 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-600 hover:text-white hover:shadow-lg hover:shadow-blue-600/25 active:translate-y-0 active:scale-95"
+                                >
+                                    <span
+                                        aria-hidden="true"
+                                        className="absolute inset-0 origin-left scale-x-0 bg-blue-600 transition-transform duration-300 ease-out group-hover:scale-x-100"
+                                    />
+                                    <span className="relative">ติดตามออเดอร์</span>
+                                    <span
+                                        aria-hidden="true"
+                                        className="relative transition-transform duration-300 group-hover:translate-x-1"
+                                    >
+                                        →
+                                    </span>
+                                </Link>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* ORDER LIST */}
+                    <section>
+                        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                            <div>
+                                <p className="text-xs font-bold tracking-[0.2em] text-blue-600">
+                                    ORDER HISTORY
+                                </p>
+
+                                <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+                                    รายการออเดอร์
+                                </h2>
+                            </div>
+
+                            {/* FILTER */}
+                            <div
+                                role="tablist"
+                                className="flex gap-1 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm"
+                            >
+                                {FILTERS.map((f) => (
+                                    <button
+                                        key={f.key}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={filter === f.key}
+                                        onClick={() => setFilter(f.key)}
+                                        className={`rounded-xl px-3 py-2 text-xs font-bold transition sm:px-4 sm:text-sm ${
+                                            filter === f.key
+                                                ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
+                                                : 'text-slate-500 hover:bg-blue-50 hover:text-blue-600'
+                                        }`}
+                                    >
+                                        {f.label}
+                                        <span
+                                            className={`ml-1.5 ${
+                                                filter === f.key
+                                                    ? 'text-blue-100'
+                                                    : 'text-slate-400'
+                                            }`}
                                         >
-                                            ดูออเดอร์ทั้งหมด
-                                        </Link>
-                                    </div>
-                                )}
-                            </section>
+                                            {counts[f.key]}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
-                        {/* ===== คอลัมน์ข้าง (เรียงต่อท้ายบนมือถือ) ===== */}
-                        <aside className="space-y-5 lg:space-y-6">
-
-                            {/* Goal / สรุป */}
-                            <section>
-                                <SectionHead title="ภาพรวมของคุณ" />
-                                <Card>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-violet-600">
-                                            <Icon name="check" className="h-6 w-6" />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-bold text-slate-900">ซักเสร็จแล้ว</p>
-                                            <p className="text-xs text-slate-500">
-                                                {completedOrders} / {totalOrders} ออเดอร์
-                                            </p>
-                                        </div>
-                                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-pink-50 text-pink-500">
-                                            <Icon name="gift" className="h-5 w-5" />
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4">
-                                        <ProgressBar value={goalPercent} />
-                                    </div>
-
-                                    <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-                                        <div className="rounded-2xl bg-slate-50 py-3">
-                                            <p className="text-xl font-black text-slate-900">{totalOrders}</p>
-                                            <p className="text-[11px] text-slate-500">ทั้งหมด</p>
-                                        </div>
-                                        <div className="rounded-2xl bg-amber-50 py-3">
-                                            <p className="text-xl font-black text-amber-600">{activeOrders}</p>
-                                            <p className="text-[11px] text-amber-700/70">กำลังทำ</p>
-                                        </div>
-                                        <div className="rounded-2xl bg-emerald-50 py-3">
-                                            <p className="text-xl font-black text-emerald-600">{completedOrders}</p>
-                                            <p className="text-[11px] text-emerald-700/70">เสร็จแล้ว</p>
-                                        </div>
-                                    </div>
-                                </Card>
-                            </section>
-
-                            {/* Quick actions */}
-                            <section>
-                                <SectionHead title="ทางลัด" />
-                                <div className="grid grid-cols-3 gap-3">
-                                    {[
-                                        { to: '/orders/new', icon: 'plus', label: 'สั่งซักผ้า', tone: 'bg-violet-50 text-violet-600' },
-                                        { to: '/locations', icon: 'pin', label: 'ที่อยู่', tone: 'bg-sky-50 text-sky-600' },
-                                        { to: '/orders', icon: 'list', label: 'ออเดอร์', tone: 'bg-amber-50 text-amber-600' },
-                                    ].map((a) => (
-                                        <Link
-                                            key={a.label}
-                                            to={a.to}
-                                            className="flex flex-col items-center gap-2 rounded-3xl bg-white p-4 shadow-[0_8px_30px_rgba(124,92,240,0.07)] ring-1 ring-slate-100 transition hover:-translate-y-1"
-                                        >
-                                            <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${a.tone}`}>
-                                                <Icon name={a.icon} className="h-5 w-5" />
-                                            </span>
-                                            <span className="text-xs font-bold text-slate-700">{a.label}</span>
-                                        </Link>
-                                    ))}
+                        {/* EMPTY */}
+                        {visible.length === 0 && (
+                            <div className="rounded-[28px] border border-dashed border-slate-300 bg-white/70 px-6 py-14 text-center">
+                                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                                    <Icon name="list" className="h-8 w-8" />
                                 </div>
-                            </section>
-                        </aside>
-                    </div>
-                )}
-            </div>
+
+                                <h3 className="mt-5 text-lg font-bold text-slate-800">
+                                    {orders.length === 0
+                                        ? 'ยังไม่มีออเดอร์'
+                                        : 'ไม่พบออเดอร์ในหมวดนี้'}
+                                </h3>
+
+                                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+                                    {orders.length === 0
+                                        ? 'เริ่มต้นด้วยการสร้างออเดอร์ซักผ้ารายการแรกของคุณ'
+                                        : 'ลองเลือกดูหมวดอื่น หรือสร้างออเดอร์ใหม่'}
+                                </p>
+
+                                {orders.length === 0 && (
+                                    <Link
+                                        to="/orders/new"
+                                        className="mt-6 inline-flex rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-700"
+                                    >
+                                        สั่งซักผ้า
+                                    </Link>
+                                )}
+                            </div>
+                        )}
+
+                        {/* LIST */}
+                        {visible.length > 0 && (
+                            <div className="divide-y divide-slate-100 overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+                                {visible.map((o) => {
+                                    const done = DONE.includes(o.status)
+                                    const pct = PROGRESS[o.status] ?? 0
+
+                                    return (
+                                        <Link
+                                            key={o.id}
+                                            to={`/orders/${o.id}`}
+                                            className="group flex items-center gap-3 px-4 py-4 transition-colors hover:bg-blue-50/40 sm:gap-4 sm:px-6 sm:py-5"
+                                        >
+                                            <OrderIcon done={done} />
+
+                                            {/* ซ้าย: เลขออเดอร์ + รายละเอียด */}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-bold text-slate-900 sm:text-base">
+                                                    {o.orderNo}
+                                                </p>
+
+                                                <p className="mt-0.5 truncate text-sm text-slate-600">
+                                                    {o.serviceName}
+                                                </p>
+
+                                                <p className="mt-0.5 text-xs text-slate-400">
+                                                    ไซส์ {o.size}
+                                                </p>
+
+                                                {!done && (
+                                                    <div className="mt-2 flex max-w-[180px] items-center gap-2">
+                                                        <ProgressBar value={pct} />
+                                                        <span className="shrink-0 text-[11px] font-semibold text-slate-400">
+                                                            {pct}%
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* ขวา: ราคา + วันที่ + สถานะ */}
+                                            <div className="flex shrink-0 flex-col items-end gap-1">
+                                                <p className="text-base font-bold text-slate-900 sm:text-lg">
+                                                    {money(o.totalPrice)}
+                                                </p>
+
+                                                <p className="text-[11px] text-slate-400">
+                                                    {dateTime(o.createdAt)}
+                                                </p>
+
+                                                <StatusBadge status={o.status} />
+                                            </div>
+
+                                            <Icon
+                                                name="chevron"
+                                                className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-500"
+                                            />
+                                        </Link>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </section>
+                </>
+            )}
         </div>
     )
 }
