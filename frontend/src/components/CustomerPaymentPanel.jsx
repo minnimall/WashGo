@@ -6,6 +6,42 @@ import { btn, ui } from '../ui'
 
 const wrap = 'mt-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4'
 
+function SlipPreview({ src, title = 'สลิปการโอนเงิน' }) {
+    const [failed, setFailed] = useState(false)
+    if (!src) return null
+
+    if (failed) {
+        return (
+            <p className="mt-3 rounded-lg bg-white px-3 py-2.5 text-xs text-gray-500">
+                โหลดรูปสลิปไม่ได้ ลองรีเฟรชหน้านี้อีกครั้ง
+            </p>
+        )
+    }
+
+    return (
+        <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
+            <p className="mb-2 text-xs font-medium text-gray-500">{title}</p>
+            <a
+                href={src}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative block overflow-hidden rounded-lg bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+                <img
+                    src={src}
+                    alt={title}
+                    loading="lazy"
+                    onError={() => setFailed(true)}
+                    className="mx-auto max-h-64 w-auto object-contain"
+                />
+                <span className="absolute bottom-2 right-2 rounded-full bg-gray-900/70 px-2.5 py-1 text-[11px] font-medium text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+                    แตะเพื่อดูขนาดเต็ม
+                </span>
+            </a>
+        </div>
+    )
+}
+
 export default function CustomerPaymentPanel({ orderId, orderStatus, onChanged }) {
     const { payment: p, setPayment, error, setError } = usePayment(orderId, orderStatus, onChanged)
     const [busy, setBusy] = useState(false)
@@ -74,10 +110,13 @@ export default function CustomerPaymentPanel({ orderId, orderStatus, onChanged }
         {error && <div className={ui.error}>{error}</div>}
 
         {completed && (
-            <p className="mt-2 text-green-700">
-            ✓ ออเดอร์เสร็จสมบูรณ์ ชำระโดย{METHOD_LABELS[p.method] ?? '-'}
-            {p.confirmedAt && ` เมื่อ ${dateTime(p.confirmedAt)}`}
+            <div className="mt-2">
+            <p className="text-green-700">
+                ✓ ออเดอร์เสร็จสมบูรณ์ ชำระโดย{METHOD_LABELS[p.method] ?? '-'}
+                {p.confirmedAt && ` เมื่อ ${dateTime(p.confirmedAt)}`}
             </p>
+            <SlipPreview src={slipSrc} />
+            </div>
         )}
 
         {!completed && p.status === 'Paid' && (
@@ -85,6 +124,7 @@ export default function CustomerPaymentPanel({ orderId, orderStatus, onChanged }
             <p className="text-green-700">
                 ✓ Rider ยืนยันรับเงินแล้ว ({METHOD_LABELS[p.method]}) ตรวจผ้าให้เรียบร้อยแล้วกดยืนยัน
             </p>
+            <SlipPreview src={slipSrc} />
             <button className={`${btn('primary')} mt-3`} onClick={receive} disabled={busy}>
                 {busy ? 'กำลังบันทึก...' : 'ยืนยันรับผ้า'}
             </button>
@@ -94,11 +134,7 @@ export default function CustomerPaymentPanel({ orderId, orderStatus, onChanged }
         {!completed && p.status === 'SlipUploaded' && (
             <div className="mt-2">
             <p className="text-amber-700">ส่งสลิปแล้ว รอ Rider ตรวจสอบ (หน้านี้อัปเดตเองอัตโนมัติ)</p>
-            {slipSrc && (
-                <a href={slipSrc} target="_blank" rel="noopener noreferrer">
-                <img src={slipSrc} alt="สลิปที่ส่ง" className="mt-2 max-h-56 rounded-lg border border-gray-200 object-contain" />
-                </a>
-            )}
+            <SlipPreview src={slipSrc} title="สลิปที่ส่งให้ Rider" />
             </div>
         )}
 
