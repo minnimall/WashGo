@@ -135,7 +135,6 @@ public class OrdersController(AppDbContext db) : ControllerBase
         pageSize = Math.Clamp(pageSize, 1, 50);
 
         var query = db.Orders.AsNoTracking().Where(o => o.CustomerId == userId);
-        var total = await query.CountAsync();
 
         var rows = await query
             .OrderByDescending(o => o.CreatedAt).ThenByDescending(o => o.Id)
@@ -146,6 +145,11 @@ public class OrdersController(AppDbContext db) : ControllerBase
                 o.EstimatedSize, o.FinalSize, o.TotalPrice, o.CreatedAt,
             })
             .ToListAsync();
+
+        // หน้าแรกที่ได้ไม่เต็มหน้า = จำนวนทั้งหมดก็คือจำนวนแถวที่ได้ ไม่ต้องนับซ้ำ (ลดไป 1 round-trip)
+        var total = page == 1 && rows.Count < pageSize
+            ? rows.Count
+            : await query.CountAsync();
 
         var items = rows.Select(r => new OrderSummaryDto(
             r.Id, r.OrderNo, r.Status, r.ServiceName, r.FinalSize ?? r.EstimatedSize, r.TotalPrice, r.CreatedAt));

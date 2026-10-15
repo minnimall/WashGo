@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import api from '../api'
 import useAutoRefresh from '../useAutoRefresh'
 import StatusBadge from '../components/StatusBadge'
+import { useAuth } from '../AuthContext'
 import { dateTime, errorText, money } from '../utils'
 
 const ACTIVE = ['Pending', 'Confirmed', 'Processing', 'Washing', 'Ready']
@@ -126,10 +127,17 @@ function OrderIcon({ done }) {
     )
 }
 
-/* ---------- page ---------- */
 
+/* แคชระดับโมดูล แยกตามผู้ใช้ */
+let cache = { uid: null, data: null }
+
+/* ---------- page ---------- */
 export default function OrdersPage() {
-    const [data, setData] = useState(null)
+    const { user } = useAuth()
+    const uid = user?.id ?? user?.userId ?? user?.email ?? null
+    const [data, setData] = useState(() =>
+        uid && cache.uid === uid ? cache.data : null
+    )
     const [error, setError] = useState('')
     const [filter, setFilter] = useState('all')
 
@@ -137,16 +145,16 @@ export default function OrdersPage() {
         try {
             const res = await api.get('/orders')
             const d = res.data
-            setData(
-                Array.isArray(d)
-                    ? { items: d, total: d.length }
-                    : { items: d.items ?? [], total: d.total ?? d.items?.length ?? 0 }
-            )
+            const next = Array.isArray(d)
+                ? { items: d, total: d.length }
+                : { items: d.items ?? [], total: d.total ?? d.items?.length ?? 0 }
+            if (uid) cache = { uid, data: next }
+            setData(next)
             setError('')
         } catch (err) {
             setError(errorText(err))
         }
-    }, [])
+    }, [uid])
 
     useAutoRefresh(load, { interval: 8000 })
 
