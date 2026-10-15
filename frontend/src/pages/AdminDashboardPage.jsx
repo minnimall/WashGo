@@ -12,7 +12,7 @@ import { useAuth } from '../AuthContext'
    วางไฟล์ไว้ในโฟลเดอร์ public/ ตาม path ด้านล่าง
    ถ้ายังไม่มีไฟล์ จะแสดงไอคอนเดิมแทนอัตโนมัติ
    ============================================================ */
-const ADMIN_HERO_IMAGE = '/images/admin-hero.png'
+const ADMIN_HERO_IMAGE = '/images/account.png'
 
 const STAT_IMAGES = {
     customers: '/images/admin/customers.png',

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import api from '../api'
 import usePayment from '../usePayment'
+import SlipPreview from './SlipPreview'
 import { METHOD_LABELS, dateTime, errorText, money } from '../utils'
 import { btn, ui } from '../ui'
 
@@ -12,9 +13,9 @@ export default function RiderPaymentPanel({ orderId, orderStatus, onChanged }) {
 
     if (!p) {
         return (
-        <div className={wrap}>
-            {error ? <div className={ui.error}>{error}</div> : <p className={ui.muted}>กำลังโหลดข้อมูลการชำระเงิน...</p>}
-        </div>
+            <div className={wrap}>
+                {error ? <div className={ui.error}>{error}</div> : <p className={ui.muted}>กำลังโหลดข้อมูลการชำระเงิน...</p>}
+            </div>
         )
     }
 
@@ -22,12 +23,12 @@ export default function RiderPaymentPanel({ orderId, orderStatus, onChanged }) {
         setError('')
         setBusy(true)
         try {
-        const res = await fn()
-        setPayment(res.data)
+            const res = await fn()
+            setPayment(res.data)
         } catch (err) {
-        setError(errorText(err))
+            setError(errorText(err))
         } finally {
-        setBusy(false)
+            setBusy(false)
         }
     }
 
@@ -52,56 +53,88 @@ export default function RiderPaymentPanel({ orderId, orderStatus, onChanged }) {
 
     return (
         <div className={wrap}>
-        <div className={ui.row}>
-            <h2 className="text-lg font-semibold text-gray-900">รับเงินจากลูกค้า</h2>
-            <strong className="text-xl text-blue-700">{money(p.amount)}</strong>
-        </div>
+            <div className={ui.row}>
+                <h2 className="text-lg font-semibold text-gray-900">รับเงินจากลูกค้า</h2>
+                <strong className="text-base text-blue-700">{money(p.amount)}</strong>
+            </div>
 
-        {error && <div className={ui.error}>{error}</div>}
+            {error && <div className={ui.error}>{error}</div>}
 
-        {completed && (
-            <p className="mt-2 text-green-700">
-            ✓ งานเสร็จสมบูรณ์ รับเงินทาง{METHOD_LABELS[p.method] ?? '-'}
-            {p.confirmedAt && ` เมื่อ ${dateTime(p.confirmedAt)}`}
-            </p>
-        )}
-
-        {!completed && p.status === 'Paid' && (
-            <p className="mt-2 text-green-700">
-            ✓ ยืนยันรับเงินแล้ว ({METHOD_LABELS[p.method]}) รอลูกค้ากดยืนยันรับผ้า
-            </p>
-        )}
-
-        {!completed && p.status === 'SlipUploaded' && (
-            <div className="mt-2">
-            <p className="text-amber-700">ลูกค้าส่งสลิปมาแล้ว ตรวจยอดเงินเข้าในแอปธนาคารก่อนกดยืนยัน</p>
-            {slipSrc && (
-                <a href={slipSrc} target="_blank" rel="noopener noreferrer">
-                <img src={slipSrc} alt="สลิปลูกค้า" className="mt-2 max-h-80 rounded-lg border border-gray-200 object-contain" />
-                </a>
+            {/* งานเสร็จสมบูรณ์ */}
+            {completed && (
+                <div className="mt-2">
+                    <p className="text-sm text-green-700">
+                        ✓ งานเสร็จสมบูรณ์ รับเงินทาง{METHOD_LABELS[p.method] ?? '-'}
+                        {p.confirmedAt && ` เมื่อ ${dateTime(p.confirmedAt)}`}
+                    </p>
+                    <SlipPreview src={slipSrc} title="สลิปจากลูกค้า" />
+                </div>
             )}
-            <div className="mt-3 flex flex-wrap gap-2">
-                <button className={btn('primary')} onClick={confirmTransfer} disabled={busy}>ยืนยันรับเงิน</button>
-                <button className={btn('danger')} onClick={reject} disabled={busy}>ปฏิเสธสลิป</button>
-            </div>
-            <p className={`${ui.muted} mt-3`}>
-                ถ้าลูกค้าจ่ายเงินสดแทน{' '}
-                <button type="button" className={ui.link} onClick={confirmCash} disabled={busy}>กดรับเงินสด</button>
-            </p>
-            </div>
-        )}
 
-        {!completed && (p.status === 'Unpaid' || p.status === 'Rejected') && (
-            <div className="mt-2">
-            {p.status === 'Rejected' && (
-                <p className={ui.muted}>ปฏิเสธสลิปไปแล้ว ({p.rejectReason}) รอลูกค้าส่งใหม่หรือจ่ายเงินสด</p>
+            {/* ยืนยันรับเงินแล้ว รอลูกค้ากดรับผ้า */}
+            {!completed && p.status === 'Paid' && (
+                <div className="mt-2">
+                    <p className="text-green-700">
+                        ✓ ยืนยันรับเงินแล้ว ({METHOD_LABELS[p.method]}) รอลูกค้ากดยืนยันรับผ้า
+                    </p>
+                    <SlipPreview src={slipSrc} title="สลิปจากลูกค้า" />
+                </div>
             )}
-            {p.status === 'Unpaid' && <p className={ui.muted}>รอลูกค้าโอนเงินพร้อมแนบสลิป หรือจ่ายเงินสด</p>}
-            <button className={`${btn('default')} mt-3`} onClick={confirmCash} disabled={busy}>
-                รับเงินสดแล้ว
-            </button>
-            </div>
-        )}
+
+            {/* ลูกค้าส่งสลิปมาแล้ว รอ Rider ตรวจ */}
+            {!completed && p.status === 'SlipUploaded' && (
+                <div className="mt-2">
+                    <p className="text-amber-700">ลูกค้าส่งสลิปมาแล้ว ตรวจยอดเงินเข้าในแอปธนาคารก่อนกดยืนยัน</p>
+
+                    <SlipPreview src={slipSrc} title="สลิปจากลูกค้า" />
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        <button className={btn('primary')} onClick={confirmTransfer} disabled={busy}>
+                            ยืนยันรับเงิน
+                        </button>
+                        <button className={btn('danger')} onClick={reject} disabled={busy}>
+                            ปฏิเสธสลิป
+                        </button>
+                    </div>
+
+                    <p className={`${ui.muted} mt-3`}>
+                        ถ้าลูกค้าจ่ายเงินสดแทน{' '}
+                        <button type="button" className={ui.link} onClick={confirmCash} disabled={busy}>
+                            กดรับเงินสด
+                        </button>
+                    </p>
+                </div>
+            )}
+
+            {/* ยังไม่จ่าย / สลิปถูกปฏิเสธ */}
+            {!completed && (p.status === 'Unpaid' || p.status === 'Rejected') && (
+                <div className="mt-2">
+                    {p.status === 'Rejected' && (
+                        <div className="mb-3 rounded-lg bg-white px-3 py-2.5 text-sm text-gray-600">
+                            ปฏิเสธสลิปไปแล้ว ({p.rejectReason}) รอลูกค้าส่งใหม่หรือจ่ายเงินสด
+                        </div>
+                    )}
+
+                    <p className="mb-2 font-medium text-gray-800">รอลูกค้าชำระเงิน</p>
+
+                    <div className="rounded-lg bg-white p-3">
+                        <p className="font-medium">1) ลูกค้าโอนเงิน แล้วแนบสลิป</p>
+                        <p className={`${ui.muted} mt-1`}>
+                            เมื่อลูกค้าส่งสลิปเข้ามา จะแสดงรูปให้ตรวจสอบและกดยืนยันได้ที่นี่
+                        </p>
+                    </div>
+
+                    <div className="mt-2 rounded-lg bg-white p-3">
+                        <p className="font-medium">2) ลูกค้าจ่ายเงินสด</p>
+                        <p className={`${ui.muted} mt-1`}>
+                            ถ้าได้รับเงินสดจากลูกค้าแล้ว กดปุ่มด้านล่างเพื่อยืนยัน
+                        </p>
+                        <button className={`${btn('default', 'sm')} mt-3`} onClick={confirmCash} disabled={busy}>
+                            รับเงินสดแล้ว
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

@@ -104,15 +104,15 @@ export default function CustomerPaymentPanel({ orderId, orderStatus, onChanged }
         <div className={wrap}>
         <div className={ui.row}>
             <h2 className="text-lg font-semibold text-gray-900">การชำระเงิน</h2>
-            <strong className="text-xl text-blue-700">{money(p.amount)}</strong>
+            <strong className="text-base text-blue-700">{money(p.amount)}</strong>
         </div>
 
         {error && <div className={ui.error}>{error}</div>}
 
         {completed && (
             <div className="mt-2">
-            <p className="text-green-700">
-                ✓ ออเดอร์เสร็จสมบูรณ์ ชำระโดย{METHOD_LABELS[p.method] ?? '-'}
+            <p className="text-green-700 text-sm">
+                ออเดอร์เสร็จสมบูรณ์ ชำระโดย{METHOD_LABELS[p.method] ?? '-'}
                 {p.confirmedAt && ` เมื่อ ${dateTime(p.confirmedAt)}`}
             </p>
             <SlipPreview src={slipSrc} />

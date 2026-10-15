@@ -52,6 +52,7 @@ export default function Layout() {
             ? [
                 { to: '/', label: 'ภาพรวม', end: true },
                 { to: '/admin/users', label: 'จัดการผู้ใช้' },
+                { to: '/admin/pricing', label: 'ตั้งราคา' },
                 { to: '/admin/riders', label: 'ตรวจสอบ Rider' },
             ]
             : []),

@@ -4,6 +4,16 @@ import { errorText } from '../utils'
 
 const ROLE_LABELS = { Customer: 'ลูกค้า', Rider: 'Rider', Admin: 'Admin' }
 
+const ICON = {
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    viewBox: '0 0 24 24',
+    className: 'h-[18px] w-[18px]',
+}
+
 const ACTIONS = {
     suspend: {
         title: 'ระงับบัญชี',
@@ -244,19 +254,44 @@ export default function AdminUsersPage() {
                                 {!isAdmin && !u.deletedAt && (
                                     <div className="flex shrink-0 gap-2">
                                         {u.isSuspended ? (
-                                            <button type="button" onClick={() => setModal({ user: u, action: 'unsuspend' })}
-                                                className="rounded-lg border border-indigo-200 px-3 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50">
-                                                ยกเลิกการระงับ
+                                            <button
+                                                type="button"
+                                                title="ยกเลิกการระงับ"
+                                                aria-label="ยกเลิกการระงับ"
+                                                onClick={() => setModal({ user: u, action: 'unsuspend' })}
+                                                className="flex h-9 w-9 items-center justify-center rounded-xl border border-indigo-200 text-indigo-600 transition hover:bg-indigo-50 active:scale-95"
+                                            >
+                                                <svg {...ICON}>
+                                                    <circle cx="12" cy="12" r="9" />
+                                                    <path d="M8 12.5l3 3 5-6" />
+                                                </svg>
                                             </button>
                                         ) : (
-                                            <button type="button" onClick={() => setModal({ user: u, action: 'suspend' })}
-                                                className="rounded-lg border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50">
-                                                ระงับ
+                                            <button
+                                                type="button"
+                                                title="ระงับบัญชี"
+                                                aria-label="ระงับบัญชี"
+                                                onClick={() => setModal({ user: u, action: 'suspend' })}
+                                                className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 text-amber-600 transition hover:bg-amber-50 active:scale-95"
+                                            >
+                                                <svg {...ICON}>
+                                                    <circle cx="12" cy="12" r="9" />
+                                                    <path d="M5.6 5.6l12.8 12.8" />
+                                                </svg>
                                             </button>
                                         )}
-                                        <button type="button" onClick={() => setModal({ user: u, action: 'delete' })}
-                                            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">
-                                            ลบ
+
+                                        <button
+                                            type="button"
+                                            title="ลบบัญชี"
+                                            aria-label="ลบบัญชี"
+                                            onClick={() => setModal({ user: u, action: 'delete' })}
+                                            className="flex h-9 w-9 items-center justify-center rounded-xl border border-red-200 text-red-600 transition hover:bg-red-50 active:scale-95"
+                                        >
+                                            <svg {...ICON}>
+                                                <path d="M4 7h16M10 11v6M14 11v6" />
+                                                <path d="M6 7l1 13h10l1-13M9 7V4h6v3" />
+                                            </svg>
                                         </button>
                                     </div>
                                 )}

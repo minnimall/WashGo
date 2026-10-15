@@ -250,13 +250,13 @@ export default function OrderDetailPage() {
     order.status === "Delivered" || order.status === "Completed";
 
   return (
-    <main className="mx-auto max-w-6xl px-3 py-4 pb-8 sm:px-6 sm:py-6 lg:px-8">
+    <main className="mx-auto max-w-7xl px-3 py-4 pb-8 sm:px-6 sm:py-6 lg:px-8">
       {/* Back */}
       <div className="mb-4">
         <BackLink />
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-8">
         {/* 1. HEADER: เลขออเดอร์ + สถานะ + ยอดรวม */}
         <section className={`${cardCls} overflow-hidden`}>
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-4 sm:px-5">
@@ -270,13 +270,6 @@ export default function OrderDetailPage() {
                   {order.orderNo}
                 </h1>
               </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <StatusBadge status={order.status} />
-              <p className="text-lg font-bold text-blue-600">
-                {money(order.totalPrice)}
-              </p>
             </div>
           </div>
 

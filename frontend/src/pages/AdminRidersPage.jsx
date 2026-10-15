@@ -165,10 +165,6 @@ export default function AdminRidersPage() {
             <div className="mb-5">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                            Rider Management
-                        </p>
-
                         <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
                             ตรวจสอบ Rider
                         </h1>
