@@ -16,6 +16,7 @@ import LaundryPhotosCard from "../components/LaundryPhotosCard";
 import RiderTrackingCard from "../components/RiderTrackingCard";
 import ChatCard from "../components/ChatCard";
 import ChatToggle from "../components/ChatToggle";
+import ReviewCard from "../components/ReviewCard";
 
 const cardCls = "rounded-2xl border border-slate-200 bg-white shadow-sm";
 const sectionCls = `${cardCls} p-4 sm:p-5`;
@@ -294,6 +295,15 @@ export default function OrderDetailPage() {
               onChanged={load}
             />
           </section>
+        )}
+
+        <p className="text-xs text-slate-400">
+          debug: status={order.status} · rider={String(order.riderName)}
+        </p>
+
+        {/* รีวิว Rider (แสดงเฉพาะเมื่อออเดอร์เสร็จสิ้น) */}
+        {order.status === "Completed" && order.riderName && (
+          <ReviewCard orderId={order.id} riderName={order.riderName} />
         )}
 
         {/* 3. TRACKING + RIDER + CHAT */}

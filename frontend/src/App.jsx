@@ -18,6 +18,7 @@ import RiderEarningsPage from './pages/RiderEarningsPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AdminPricingPage from './pages/AdminPricingPage'
+import ProfilePage from './pages/ProfilePage'
 
 function Home() {
   const { user } = useAuth()
@@ -42,6 +43,7 @@ export default function App() {
 
           <Route element={<RequireRole><Layout /></RequireRole>}>
             <Route path="/" element={<Home />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/orders" element={<RequireRole role="Customer"><OrdersPage /></RequireRole>} />
             <Route path="/orders/new" element={<RequireRole role="Customer"><NewOrderPage /></RequireRole>} />
             <Route path="/orders/:id" element={<RequireRole role="Customer"><OrderDetailPage /></RequireRole>} />

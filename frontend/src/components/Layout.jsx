@@ -34,26 +34,28 @@ export default function Layout() {
     const navLinks = [
         ...(isCustomer
             ? [
-                { to: "/" , label: 'หน้าหลัก' },
-                { to: '/orders/new', label: 'สั่งซักผ้า' },
-                { to: '/orders', label: 'ออเดอร์ของฉัน', end: true },
-                { to: '/locations', label: 'ที่อยู่ของฉัน' },
+                { to: '/', label: 'หน้าหลัก', icon: 'home', end: true },
+                { to: '/orders/new', label: 'สั่งซักผ้า', icon: 'plus' },
+                { to: '/orders', label: 'ออเดอร์ของฉัน', icon: 'list', end: true },
+                { to: '/locations', label: 'ที่อยู่ของฉัน', icon: 'pin' },
+                // อยู่ในเมนู desktop และเมนูผู้ใช้บนมือถือ แต่ไม่ใส่ในแถบเมนูล่าง (กันแน่น)
+                { to: '/profile', label: 'โปรไฟล์', icon: 'user', hideInTabBar: true },
             ]
             : []),
         ...(isRider
             ? [
-                { to: '/', label: 'หน้าหลัก', end: true },
-                { to: '/rider/jobs', label: 'งาน' },
-                { to: '/rider/earnings', label: 'รายได้' },
-                { to: '/rider', label: 'บัญชี Rider', end: true },
+                { to: '/', label: 'หน้าหลัก', icon: 'home', end: true },
+                { to: '/rider/jobs', label: 'งาน', icon: 'jobs' },
+                { to: '/rider/earnings', label: 'รายได้', icon: 'wallet' },
+                { to: '/rider', label: 'บัญชี Rider', icon: 'user', end: true },
             ]
             : []),
         ...(isAdmin
             ? [
-                { to: '/', label: 'ภาพรวม', end: true },
-                { to: '/admin/users', label: 'จัดการผู้ใช้' },
-                { to: '/admin/pricing', label: 'ตั้งราคา' },
-                { to: '/admin/riders', label: 'ตรวจสอบ Rider' },
+                { to: '/', label: 'ภาพรวม', icon: 'home', end: true },
+                { to: '/admin/users', label: 'จัดการผู้ใช้', icon: 'users' },
+                { to: '/admin/pricing', label: 'ตั้งราคา', icon: 'tag' },
+                { to: '/admin/riders', label: 'ตรวจสอบ Rider', icon: 'shield' },
             ]
             : []),
     ]

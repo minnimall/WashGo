@@ -21,6 +21,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<ChatThread> ChatThreads => Set<ChatThread>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<UserAvatar> UserAvatars => Set<UserAvatar>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
     {
@@ -77,6 +79,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             // แชทเป็นหลักฐาน ลบผู้ใช้แล้วต้องไม่พาข้อความหายตาม
             e.HasOne(m => m.Sender).WithMany()
              .HasForeignKey(m => m.SenderId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Review>(e =>
+        {
+            e.HasIndex(r => r.OrderId).IsUnique();       // 1 ออเดอร์ 1 รีวิว
+            e.HasIndex(r => r.RiderId);
+            e.HasOne(r => r.Order).WithMany().HasForeignKey(r => r.OrderId).OnDelete(DeleteBehavior.Cascade);
+            e.ToTable(t => t.HasCheckConstraint("CK_Review_Rating", "\"Rating\" BETWEEN 1 AND 5"));
+        });
+
+        b.Entity<UserAvatar>(e =>
+        {
+            e.HasKey(a => a.UserId);
+            e.Property(a => a.ContentType).HasMaxLength(20);
+            e.HasOne(a => a.User).WithOne().HasForeignKey<UserAvatar>(a => a.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<Payment>(e =>

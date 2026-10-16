@@ -715,6 +715,51 @@ namespace WashGOApi.Migrations
                     b.ToTable("Payments");
                 });
 
+            modelBuilder.Entity("WashGOApi.Models.Review", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CustomerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RiderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.HasIndex("RiderId");
+
+                    b.ToTable("Reviews", t =>
+                        {
+                            t.HasCheckConstraint("CK_Review_Rating", "\"Rating\" BETWEEN 1 AND 5");
+                        });
+                });
+
             modelBuilder.Entity("WashGOApi.Models.RiderProfile", b =>
                 {
                     b.Property<string>("UserId")
@@ -828,6 +873,28 @@ namespace WashGOApi.Migrations
                         .IsUnique();
 
                     b.ToTable("ServiceTypes");
+                });
+
+            modelBuilder.Entity("WashGOApi.Models.UserAvatar", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserAvatars");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -1053,6 +1120,17 @@ namespace WashGOApi.Migrations
                     b.Navigation("SlipImage");
                 });
 
+            modelBuilder.Entity("WashGOApi.Models.Review", b =>
+                {
+                    b.HasOne("WashGOApi.Models.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("WashGOApi.Models.RiderProfile", b =>
                 {
                     b.HasOne("WashGOApi.Models.ApplicationUser", "User")
@@ -1073,6 +1151,17 @@ namespace WashGOApi.Migrations
                         .IsRequired();
 
                     b.Navigation("ServiceType");
+                });
+
+            modelBuilder.Entity("WashGOApi.Models.UserAvatar", b =>
+                {
+                    b.HasOne("WashGOApi.Models.ApplicationUser", "User")
+                        .WithOne()
+                        .HasForeignKey("WashGOApi.Models.UserAvatar", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WashGOApi.Models.ApplicationUser", b =>

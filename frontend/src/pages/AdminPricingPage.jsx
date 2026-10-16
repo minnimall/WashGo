@@ -293,7 +293,7 @@ export default function AdminPricingPage() {
                 {/* Header */}
                 <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">ตั้งราคา</h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">ตั้งราคา</h1>
                         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">จัดการค่าส่ง ราคาบริการซักผ้า และรายการเสริมของ WashGo ได้จากที่เดียว</p>
                     </div>
                     <div className="flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 shadow-sm">
