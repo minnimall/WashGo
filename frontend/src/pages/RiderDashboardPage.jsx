@@ -151,7 +151,7 @@ export default function RiderDashboardPage() {
                                     {VERIFY_LABELS[me.status] ?? me.status}
                                 </span>
                                 {reviews && reviews.count > 0 && (
-                                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-100 bg-white/80 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                                         <Stars value={reviews.average} />
                                         <span>{Number(reviews.average).toFixed(1)}</span>
                                         <span className="font-normal text-slate-400">({reviews.count} รีวิว)</span>
