@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import api from './api'
-import OfflineScreen from '../components/OfflineScreen'
+import OfflineScreen from './components/OfflineScreen'
 
 const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
