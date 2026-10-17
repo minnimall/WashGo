@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import api from './api'
+import OfflineScreen from './components/OfflineScreen'
 
 const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
@@ -18,6 +19,7 @@ async function withAvatar(u) {
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [offline, setOffline] = useState(false)
 
     // เปิดเว็บ: ถาม backend ว่า cookie ที่มีอยู่ยังใช้ได้ไหม
     useEffect(() => {
@@ -27,8 +29,9 @@ export function AuthProvider({ children }) {
             try {
                 const res = await api.get('/auth/me')
                 setUser(await withAvatar(res.data))
-            } catch {
+            } catch (err) {
                 setUser(null)
+                if (!err.response) setOffline(true) // ไม่มี response = ติดต่อเซิร์ฟเวอร์ไม่ได้
             } finally {
                 setLoading(false)
             }
@@ -66,6 +69,8 @@ export function AuthProvider({ children }) {
     // อัปเดตบางฟิลด์ของ user ทันที เช่น patchUser({ avatarVersion: 123 }) หรือ patchUser({ fullName: 'ชื่อใหม่' })
     const patchUser = (partial) =>
         setUser((u) => (u ? { ...u, ...partial } : u))
+
+    if (offline) return <OfflineScreen />
 
     return (
         <AuthContext.Provider

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import MobileTabBar from '../components/MobileTabBar'
+import InstallPrompt from './InstallPrompt'
+import PwaUpdater from './PwaUpdater'
 import Avatar from '../components/Avatar' // ปรับ path ให้ตรงกับที่คุณวางไฟล์ Avatar
 
 export default function Layout() {
@@ -266,6 +268,8 @@ export default function Layout() {
                 <Outlet />
             </main>
 
+            <PwaUpdater />
+            <InstallPrompt />
             <MobileTabBar links={navLinks} />
         </div>
     )
