@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using WashGOApi.Models;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 
 namespace WashGOApi.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options)
-    : IdentityDbContext<ApplicationUser>(options)
+    : IdentityDbContext<ApplicationUser>(options), IDataProtectionKeyContext
 {
     public DbSet<RiderProfile> RiderProfiles => Set<RiderProfile>();
     public DbSet<Location> Locations => Set<Location>();
@@ -23,6 +24,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<UserAvatar> UserAvatars => Set<UserAvatar>();
+    public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
 
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
     {

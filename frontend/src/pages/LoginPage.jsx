@@ -1,25 +1,80 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import { errorText } from '../utils'
+import PasswordInput from '../components/PasswordInput'
+import GoogleButton from '../components/GoogleButton'
+import VerifyNotice from '../components/VerifyNotice'
+
+// ช่องกรอก: มือถือ = label พาดขอบบนของช่อง / desktop = label อยู่เหนือช่อง
+const inputCls =
+    'w-full px-4 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-500/10 lg:bg-slate-50 lg:focus:bg-white'
+
+function Field({ label, hint, children }) {
+    return (
+        <div className="relative">
+            <label className="absolute -top-2 left-3 z-10 bg-white px-1.5 text-[10px] font-semibold text-slate-500 lg:static lg:mb-1.5 lg:block lg:bg-transparent lg:px-0 lg:text-xs lg:text-slate-600">
+                {label}
+                {hint && <span className="ml-1 font-normal text-slate-400">{hint}</span>}
+            </label>
+            {children}
+        </div>
+    )
+}
+
+// หัว blob บนมือถือ (ซ่อนบน desktop)
+function MobileHeader({ greeting, title }) {
+    return (
+        <div className="relative h-44 shrink-0 lg:hidden">
+            <svg
+                viewBox="0 0 400 200"
+                preserveAspectRatio="none"
+                className="absolute inset-0 h-full w-full overflow-visible drop-shadow-[0_14px_16px_rgba(14,116,144,0.28)]"
+                aria-hidden="true"
+            >
+                <defs>
+                    <linearGradient id="washgo-blob" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stopColor="#1e5fa8" />
+                        <stop offset="0.55" stopColor="#1b8cc0" />
+                        <stop offset="1" stopColor="#35aaa8" />
+                    </linearGradient>
+                </defs>
+                <path
+                    d="M0 0H400V72C400 112 372 130 336 124C292 116 270 152 220 172C160 196 70 176 0 154Z"
+                    fill="url(#washgo-blob)"
+                />
+            </svg>
+
+            <div className="absolute -top-10 right-2 h-28 w-28 rounded-full bg-white/10" />
+            <div className="absolute right-24 top-20 h-8 w-8 rounded-full bg-white/10" />
+
+            <div className="absolute left-7 top-12">
+                <p className="text-sm font-medium text-white/85">{greeting}</p>
+                <h1 className="mt-0.5 text-3xl font-bold leading-tight text-white">{title}</h1>
+            </div>
+        </div>
+    )
+}
 
 export default function LoginPage() {
-    const { user, loading, login, register } = useAuth()
+    const { user, loading, login, register, loginWithGoogle } = useAuth()
 
     const [mode, setMode] = useState('login')
     const [form, setForm] = useState({
         fullName: '',
         email: '',
         password: '',
+        confirmPassword: '',
         phone: '',
         role: 'Customer'
     })
     const [error, setError] = useState('')
     const [busy, setBusy] = useState(false)
+    const [pending, setPending] = useState(null)
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#f3f1ff]">
+            <div className="min-h-screen flex items-center justify-center bg-[#eef6fb]">
                 <div className="text-sm font-medium text-slate-500">กำลังโหลด...</div>
             </div>
         )
@@ -48,8 +103,30 @@ export default function LoginPage() {
             if (mode === 'login') {
                 await login(form.email, form.password)
             } else {
-                await register(form)
+                if (form.password !== form.confirmPassword) {
+                    setError('รหัสผ่านทั้งสองช่องไม่ตรงกัน')
+                    return
+                }
+                const { confirmPassword, ...payload } = form
+                await register(payload)
+                setPending({ email: payload.email, justSent: true })
             }
+        } catch (err) {
+            if (err.response?.data?.code === 'EMAIL_NOT_CONFIRMED') {
+                setPending({ email: form.email, justSent: false })
+            } else {
+                setError(errorText(err))
+            }
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    const onGoogle = async (credential) => {
+        setError('')
+        setBusy(true)
+        try {
+            await loginWithGoogle(credential)
         } catch (err) {
             setError(errorText(err))
         } finally {
@@ -59,47 +136,71 @@ export default function LoginPage() {
 
     const isLogin = mode === 'login'
 
-    return (
-        <main className="min-h-screen flex items-center justify-center bg-[#f3f1ff] px-4 py-8 sm:px-6 lg:px-8 relative overflow-hidden">
-            <div className="absolute -top-24 -left-24 w-64 h-64 rounded-full bg-violet-300/30 blur-2xl" />
-            <div className="absolute -bottom-28 -right-20 w-80 h-80 rounded-full bg-indigo-300/30 blur-2xl" />
-            <div className="absolute top-1/2 left-1/2 w-96 h-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/40 blur-3xl" />
+    const header = pending
+        ? { greeting: 'เกือบเสร็จแล้ว', title: 'ยืนยันอีเมล' }
+        : isLogin
+            ? { greeting: 'ยินดีต้อนรับกลับ WashGo', title: 'เข้าสู่ระบบ' }
+            : { greeting: 'มาใช้ WashGo กัน', title: 'สมัครสมาชิก' }
 
-            <div className="relative z-10 w-full max-w-5xl min-h-[580px] bg-white rounded-[28px] shadow-[0_25px_70px_rgba(76,61,145,0.18)] overflow-hidden flex">
+    const submitCls = 'w-full mt-1 rounded-xl bg-[#3D8DB3] px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-[#3D8DB3]/25 transition-all duration-200 hover:bg-[#327A9D] hover:shadow-md hover:shadow-[#3D8DB3]/30 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#3D8DB3]/20 disabled:cursor-not-allowed disabled:opacity-50'
+
+    const linkCls = 'text-xs font-semibold text-sky-600 hover:text-blue-700 transition'
+
+    return (
+        <main className="relative flex min-h-screen overflow-hidden bg-white lg:items-center lg:justify-center lg:bg-[#eef6fb] lg:px-8 lg:py-8">
+            {/* ลวดลายพื้นหลัง (desktop เท่านั้น) */}
+            <div className="hidden lg:block absolute -top-24 -left-24 w-64 h-64 rounded-full bg-sky-300/30 blur-2xl" />
+            <div className="hidden lg:block absolute -bottom-28 -right-20 w-80 h-80 rounded-full bg-teal-300/30 blur-2xl" />
+            <div className="hidden lg:block absolute top-1/2 left-1/2 w-96 h-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/40 blur-3xl" />
+
+            {/* มือถือ = เต็มจอ / desktop = การ์ดลอย */}
+            <div className="relative z-10 flex w-full min-h-screen bg-white lg:min-h-[580px] lg:max-w-5xl lg:rounded-[28px] lg:shadow-[0_25px_70px_rgba(14,80,140,0.18)] lg:overflow-hidden">
                 {/* Left Form */}
-                <section className="w-full lg:w-1/2 flex items-center justify-center px-7 py-10 sm:px-12 lg:px-14">
-                    <div className="w-full max-w-md">
-                        <div className=" flex items-center justify-center">
-                            <img src="/images/logo3.png" alt="WashGo" className="h-30 w-30 object-contain" />
+                <section className="flex w-full flex-col lg:w-1/2 lg:items-center lg:justify-center">
+                    <MobileHeader greeting={header.greeting} title={header.title} />
+
+                    <div className="mx-auto w-full max-w-md px-7 pb-8 sm:px-10 lg:px-14 lg:py-10">
+                        {/* โลโก้ */}
+                        <div className="flex items-center justify-center -mt-3 -mb-1 lg:mt-0 lg:mb-0">
+                            <img
+                                src="/images/logo3.png"
+                                alt="WashGo"
+                                className="h-28 w-auto object-contain lg:h-30 lg:w-30"
+                            />
                         </div>
 
-                        {isLogin && (
+                        {pending && (
+                            <VerifyNotice
+                                email={pending.email}
+                                justSent={pending.justSent}
+                                onBack={() => { setPending(null); setMode('login') }}
+                            />
+                        )}
+
+                        {!pending && isLogin && (
                             <div>
-                                <div className="text-center mb-7">
-                                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">เข้าสู่ระบบ</h1>
-                                    <p className="mt-2 text-xs sm:text-sm text-slate-400">เข้าสู่ระบบเพื่อใช้งาน WashGo</p>
+                                <div className="hidden lg:block text-center mb-7">
+                                    <h1 className="text-3xl font-bold text-slate-800">เข้าสู่ระบบ</h1>
+                                    <p className="mt-2 text-sm text-slate-400">เข้าสู่ระบบเพื่อใช้งาน WashGo</p>
                                 </div>
 
-                                <form onSubmit={submit} className="space-y-4">
-                                    <div>
-                                        <label className="block mb-1.5 text-xs font-semibold text-slate-600">อีเมล</label>
+                                <form onSubmit={submit} className="mt-4 space-y-5 lg:mt-0 lg:space-y-4">
+                                    <Field label="อีเมล">
                                         <div className="relative">
-                                            <input type="email" placeholder="กรอกอีเมล" value={form.email} onChange={set('email')} required className="w-full h-12 px-4 pr-11 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:bg-white focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10" />
+                                            <input type="email" placeholder="กรอกอีเมล" value={form.email} onChange={set('email')} required className={`${inputCls} h-12 pr-11`} />
                                             <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                                                 <path d="M4 6h16v12H4z" />
                                                 <path d="m4 7 8 6 8-6" />
                                             </svg>
                                         </div>
-                                    </div>
+                                    </Field>
 
                                     <div>
-                                        <label className="block mb-1.5 text-xs font-semibold text-slate-600">รหัสผ่าน</label>
-                                        <div className="relative">
-                                            <input type="password" placeholder="กรอกรหัสผ่าน" maxLength={100} value={form.password} onChange={set('password')} required className="w-full h-12 px-4 pr-11 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:bg-white focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10" />
-                                            <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                                                <rect x="5" y="10" width="14" height="10" rx="2" />
-                                                <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                                            </svg>
+                                        <Field label="รหัสผ่าน">
+                                            <PasswordInput placeholder="กรอกรหัสผ่าน" maxLength={100} value={form.password} onChange={set('password')} required autoComplete="current-password" />
+                                        </Field>
+                                        <div className="mt-2 text-right">
+                                            <Link to="/forgot-password" className={linkCls}>ลืมรหัสผ่าน?</Link>
                                         </div>
                                     </div>
 
@@ -109,7 +210,7 @@ export default function LoginPage() {
                                         </div>
                                     )}
 
-                                    <button type="submit" disabled={busy} className="w-full h-12 mt-2 rounded-xl bg-violet-500 hover:bg-violet-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 transition disabled:opacity-60 disabled:cursor-not-allowed">
+                                    <button type="submit" disabled={busy} className={`${submitCls} h-12`}>
                                         {busy ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
                                     </button>
                                 </form>
@@ -120,42 +221,40 @@ export default function LoginPage() {
                                     <div className="flex-1 h-px bg-slate-100" />
                                 </div>
 
-                                <div className="text-center">
+                                <GoogleButton onCredential={onGoogle} onError={setError} />
+
+                                <div className="text-center mt-6 lg:mt-5">
                                     <span className="text-xs text-slate-400">ยังไม่มีบัญชี? </span>
-                                    <button type="button" onClick={switchMode} className="text-xs font-semibold text-violet-500 hover:text-violet-600 transition">
+                                    <button type="button" onClick={switchMode} className={linkCls}>
                                         สมัครสมาชิก
                                     </button>
                                 </div>
                             </div>
                         )}
 
-                        {!isLogin && (
+                        {!pending && !isLogin && (
                             <div>
-                                <div className="text-center mb-6">
-                                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">สร้างบัญชีใหม่</h1>
-                                    <p className="mt-2 text-xs sm:text-sm text-slate-400">สมัครสมาชิกเพื่อเริ่มใช้งาน WashGo</p>
+                                <div className="hidden lg:block text-center mb-6">
+                                    <h1 className="text-3xl font-bold text-slate-800">สร้างบัญชีใหม่</h1>
+                                    <p className="mt-2 text-sm text-slate-400">สมัครสมาชิกเพื่อเริ่มใช้งาน WashGo</p>
                                 </div>
 
-                                <form onSubmit={submit} className="space-y-3.5">
-                                    <div>
-                                        <label className="block mb-1.5 text-xs font-semibold text-slate-600">ชื่อ-นามสกุล</label>
-                                        <input type="text" placeholder="กรอกชื่อ-นามสกุล" maxLength={100} value={form.fullName} onChange={set('fullName')} required className="w-full h-11 px-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:bg-white focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10" />
-                                    </div>
+                                <form onSubmit={submit} className="mt-4 space-y-5 lg:mt-0 lg:space-y-3.5">
+                                    <Field label="ชื่อ-นามสกุล">
+                                        <input type="text" placeholder="กรอกชื่อ-นามสกุล" maxLength={100} value={form.fullName} onChange={set('fullName')} required className={`${inputCls} h-11`} />
+                                    </Field>
 
-                                    <div>
-                                        <label className="block mb-1.5 text-xs font-semibold text-slate-600">อีเมล</label>
-                                        <input type="email" placeholder="กรอกอีเมล" value={form.email} onChange={set('email')} required className="w-full h-11 px-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:bg-white focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10" />
-                                    </div>
+                                    <Field label="อีเมล">
+                                        <input type="email" placeholder="กรอกอีเมล" value={form.email} onChange={set('email')} required className={`${inputCls} h-11`} />
+                                    </Field>
 
-                                    <div>
-                                        <label className="block mb-1.5 text-xs font-semibold text-slate-600">เบอร์โทรศัพท์ <span className="font-normal text-slate-400">(ไม่บังคับ)</span></label>
-                                        <input type="tel" placeholder="กรอกเบอร์โทรศัพท์" maxLength={20} value={form.phone} onChange={set('phone')} className="w-full h-11 px-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:bg-white focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10" />
-                                    </div>
+                                    <Field label="เบอร์โทรศัพท์" hint="(ไม่บังคับ)">
+                                        <input type="tel" placeholder="กรอกเบอร์โทรศัพท์" maxLength={20} value={form.phone} onChange={set('phone')} className={`${inputCls} h-11`} />
+                                    </Field>
 
-                                    <div>
-                                        <label className="block mb-1.5 text-xs font-semibold text-slate-600">ประเภทบัญชี</label>
+                                    <Field label="ประเภทบัญชี">
                                         <div className="relative">
-                                            <select value={form.role} onChange={set('role')} className="appearance-none w-full h-11 px-4 pr-10 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 outline-none transition cursor-pointer focus:bg-white focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
+                                            <select value={form.role} onChange={set('role')} className={`${inputCls} appearance-none h-11 pr-10 cursor-pointer`}>
                                                 <option value="Customer">ลูกค้า</option>
                                                 <option value="Rider">ไรเดอร์</option>
                                             </select>
@@ -163,11 +262,19 @@ export default function LoginPage() {
                                                 <path d="m6 9 6 6 6-6" />
                                             </svg>
                                         </div>
-                                    </div>
+                                    </Field>
+
+                                    <Field label="รหัสผ่าน">
+                                        <PasswordInput className="h-11" placeholder="อย่างน้อย 8 ตัวอักษร" maxLength={100} value={form.password} onChange={set('password')} required autoComplete="new-password" />
+                                    </Field>
 
                                     <div>
-                                        <label className="block mb-1.5 text-xs font-semibold text-slate-600">รหัสผ่าน</label>
-                                        <input type="password" placeholder="อย่างน้อย 8 ตัวอักษร" maxLength={100} value={form.password} onChange={set('password')} required className="w-full h-11 px-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:bg-white focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10" />
+                                        <Field label="ยืนยันรหัสผ่าน">
+                                            <PasswordInput className="h-11" placeholder="กรอกรหัสผ่านอีกครั้ง" maxLength={100} value={form.confirmPassword} onChange={set('confirmPassword')} required autoComplete="new-password" />
+                                        </Field>
+                                        {form.confirmPassword && form.confirmPassword !== form.password && (
+                                            <p className="mt-1 text-[11px] text-red-500">รหัสผ่านไม่ตรงกัน</p>
+                                        )}
                                     </div>
 
                                     {error && (
@@ -176,14 +283,22 @@ export default function LoginPage() {
                                         </div>
                                     )}
 
-                                    <button type="submit" disabled={busy} className="w-full h-11 mt-2 rounded-xl bg-violet-500 hover:bg-violet-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 transition disabled:opacity-60 disabled:cursor-not-allowed">
+                                    <button type="submit" disabled={busy} className={`${submitCls} h-12 lg:h-11`}>
                                         {busy ? 'กำลังสร้างบัญชี...' : 'สร้างบัญชี'}
                                     </button>
                                 </form>
 
-                                <div className="text-center mt-6">
+                                <div className="flex items-center gap-3 mt-5 mb-4">
+                                    <div className="flex-1 h-px bg-slate-100" />
+                                    <span className="text-[11px] text-slate-400">หรือ</span>
+                                    <div className="flex-1 h-px bg-slate-100" />
+                                </div>
+                                <GoogleButton onCredential={onGoogle} onError={setError} />
+                                <p className="mt-2 text-center text-[11px] text-slate-400">สมัครด้วย Google จะได้บัญชีลูกค้า</p>
+
+                                <div className="text-center mt-5">
                                     <span className="text-xs text-slate-400">มีบัญชีอยู่แล้ว? </span>
-                                    <button type="button" onClick={switchMode} className="text-xs font-semibold text-violet-500 hover:text-violet-600 transition">
+                                    <button type="button" onClick={switchMode} className={linkCls}>
                                         เข้าสู่ระบบ
                                     </button>
                                 </div>
@@ -196,8 +311,8 @@ export default function LoginPage() {
                     </div>
                 </section>
 
-                {/* Right Visual */}
-                <section className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-violet-500 via-indigo-500 to-blue-600 items-center justify-center">
+                {/* Right Visual (desktop เท่านั้น) */}
+                <section className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-blue-700 via-sky-600 to-teal-500 items-center justify-center">
                     <div className="absolute inset-0 opacity-20">
                         <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full border-[2px] border-white/60" />
                         <div className="absolute top-10 -right-32 w-[430px] h-[430px] rounded-full border-[2px] border-white/30" />
@@ -233,7 +348,7 @@ export default function LoginPage() {
                             </div>
 
                             <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center">
-                                <svg className="w-5 h-5 text-violet-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                <svg className="w-5 h-5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                                     <path d="M12 3v3" />
                                     <path d="M12 18v3" />
                                     <path d="M3 12h3" />

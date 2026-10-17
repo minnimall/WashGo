@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Text.Json.Serialization;
@@ -33,8 +34,15 @@ builder.Services.AddIdentityCore<ApplicationUser>(o =>
         o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     })
     .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<AppDbContext>();
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();   // จำเป็นสำหรับ token ยืนยันอีเมล/รีเซ็ตรหัสผ่าน
 
+builder.Services.AddDataProtection()
+    .SetApplicationName("WashGo")
+    .PersistKeysToDbContext<AppDbContext>();
+builder.Services.Configure<DataProtectionTokenProviderOptions>(o =>
+    o.TokenLifespan = TimeSpan.FromHours(2));
+builder.Services.AddHttpClient<EmailService>(c => c.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddSingleton<JwtService>();
 builder.Services.AddSingleton<PiiProtector>();
 builder.Services.AddMemoryCache();
@@ -122,7 +130,7 @@ app.UseForwardedHeaders();   // ต้องมาก่อน middleware อื
 
 // ตรวจค่าลับให้ครบตั้งแต่เริ่มแอป ถ้าขาดจะล้มทันที ไม่ไปพังตอนผู้ใช้อัปโหลด
 _ = app.Services.GetRequiredService<PiiProtector>();
-foreach (var key in new[] { "Supabase:Url", "Supabase:ServiceKey", "Supabase:Bucket" })
+foreach (var key in new[] { "Supabase:Url", "Supabase:ServiceKey", "Supabase:Bucket", "Google:ClientId", "App:BaseUrl" })
 {
     if (string.IsNullOrWhiteSpace(app.Configuration[key]))
         throw new InvalidOperationException($"Missing configuration: {key}");

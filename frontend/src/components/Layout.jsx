@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import MobileTabBar from '../components/MobileTabBar'
+import Avatar from '../components/Avatar' // ปรับ path ให้ตรงกับที่คุณวางไฟล์ Avatar
 
 export default function Layout() {
     const { user, logout } = useAuth()
@@ -64,8 +65,6 @@ export default function Layout() {
 
     // ป้ายบทบาทที่แสดงใต้ชื่อผู้ใช้
     const roleLabel = isAdmin ? 'Admin' : isRider ? 'Rider' : isCustomer ? 'Customer' : 'User'
-
-    const initial = user.fullName?.charAt(0)?.toUpperCase() || '?'
 
     // ปิด dropdown ทุกครั้งที่เปลี่ยนหน้า
     useEffect(() => {
@@ -132,9 +131,13 @@ export default function Layout() {
 
                         {/* User info (desktop) */}
                         <div className="hidden md:flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-sm font-bold text-blue-600 shadow-sm">
-                                {initial}
-                            </div>
+                            <Avatar
+                                name={user.fullName}
+                                version={user.avatarVersion}
+                                size="size-10"
+                                text="text-sm"
+                                className="shadow-sm"
+                            />
 
                             <div className="max-w-[140px]">
                                 <p className="text-sm font-semibold text-slate-700 truncate">
@@ -163,11 +166,16 @@ export default function Layout() {
                                 onClick={() => setUserOpen((v) => !v)}
                                 aria-label="เมนูผู้ใช้"
                                 aria-expanded={userOpen}
-                                className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 text-sm font-bold text-blue-600 shadow-sm ring-2 transition active:scale-95 ${
-                                    userOpen ? 'ring-blue-300' : 'ring-white'
+                                className={`rounded-full ring-2 shadow-sm transition active:scale-95 ${
+                                    userOpen ? 'ring-blue-300' : 'ring-transparent'
                                 }`}
                             >
-                                {initial}
+                                <Avatar
+                                    name={user.fullName}
+                                    version={user.avatarVersion}
+                                    size="size-10"
+                                    text="text-sm"
+                                />
                             </button>
 
                             {userOpen && (
@@ -175,9 +183,12 @@ export default function Layout() {
 
                                     {/* ข้อมูลผู้ใช้ */}
                                     <div className="flex items-center gap-3 px-3 py-3">
-                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 text-base font-bold text-blue-600">
-                                            {initial}
-                                        </div>
+                                        <Avatar
+                                            name={user.fullName}
+                                            version={user.avatarVersion}
+                                            size="size-11"
+                                            text="text-base"
+                                        />
                                         <div className="min-w-0">
                                             <p className="truncate text-sm font-semibold text-slate-800">
                                                 {user.fullName}
