@@ -5,6 +5,7 @@ import MobileTabBar from '../components/MobileTabBar'
 import InstallPrompt from '../components/Installprompt'
 import PwaUpdater from '../components/PwaUpdater'
 import Avatar from '../components/Avatar' // ปรับ path ให้ตรงกับที่คุณวางไฟล์ Avatar
+import { fetchOrders } from '../ordersCache'
 
 export default function Layout() {
     const { user, logout } = useAuth()
@@ -12,6 +13,11 @@ export default function Layout() {
 
     const [userOpen, setUserOpen] = useState(false) // dropdown ผู้ใช้บนมือถือ
     const userRef = useRef(null)
+    // ดึงออเดอร์ล่วงหน้า ให้กดเข้าหน้า "ออเดอร์ของฉัน" แล้วเห็นข้อมูลทันที
+    useEffect(() => {
+        const uid = user?.id ?? user?.userId ?? user?.email
+        if (uid && user.roles.includes('Customer')) fetchOrders(uid).catch(() => {})
+    }, [user?.id, user?.userId, user?.email])
 
     const isCustomer = user.roles.includes('Customer')
     const isRider = user.roles.includes('Rider')

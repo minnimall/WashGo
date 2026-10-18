@@ -402,7 +402,7 @@ export default function AdminDashboardPage() {
         }
     }, [uid])
 
-    useAutoRefresh(load, { interval: 30000 })
+    useAutoRefresh(load, { interval: 30000, immediate: true })
 
     if (!d) {
         return error ? (

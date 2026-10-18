@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 // เรียก refresh เป็นรอบทุก interval ms ขณะหน้านี้มองเห็นอยู่
 // และเรียกทันทีเมื่อผู้ใช้กลับมาที่แท็บ/หน้าต่าง หรืออินเทอร์เน็ตกลับมา
 // refresh ควรเป็นฟังก์ชันที่ "เงียบ" (ไม่โชว์ loading และไม่ตั้ง error ของหน้า)
-export default function useAutoRefresh(refresh, { interval = 8000, enabled = true } = {}) {
+export default function useAutoRefresh(refresh, { interval = 8000, enabled = true, immediate = false } = {}) {
     const latest = useRef(refresh)
     useEffect(() => { latest.current = refresh })
 
@@ -21,6 +21,7 @@ export default function useAutoRefresh(refresh, { interval = 8000, enabled = tru
         }
         }
 
+        if (immediate) run() // ยิงทันทีตอนเข้าหน้า ไม่ต้องรอครบ interval
         const timer = setInterval(run, interval)
         const onBack = () => { if (!document.hidden) run() }
         document.addEventListener('visibilitychange', onBack)

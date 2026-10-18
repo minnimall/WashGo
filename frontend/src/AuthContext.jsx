@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import api from './api'
 import OfflineScreen from './components/OfflineScreen'
+import { clearOrdersCache } from './ordersCache'
 
 const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
@@ -28,7 +29,8 @@ export function AuthProvider({ children }) {
         const init = async () => {
             try {
                 const res = await api.get('/auth/me')
-                setUser(await withAvatar(res.data))
+                setUser({ ...res.data, avatarVersion: null })
+                withAvatar(res.data).then(setUser)
             } catch (err) {
                 setUser(null)
                 if (!err.response) setOffline(true) // ไม่มี response = ติดต่อเซิร์ฟเวอร์ไม่ได้
@@ -40,7 +42,7 @@ export function AuthProvider({ children }) {
     }, [])
 
     useEffect(() => {
-        const onExpired = () => setUser(null)
+        const onExpired = () => { clearOrdersCache(); setUser(null) }
         window.addEventListener('auth-expired', onExpired)
         return () => window.removeEventListener('auth-expired', onExpired)
     }, [])
@@ -62,6 +64,7 @@ export function AuthProvider({ children }) {
         try {
             await api.post('/auth/logout')
         } finally {
+            clearOrdersCache()
             setUser(null)
         }
     }

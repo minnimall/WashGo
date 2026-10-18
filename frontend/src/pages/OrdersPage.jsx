@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import api from '../api'
+import { fetchOrders, getOrdersCache } from '../ordersCache'
 import useAutoRefresh from '../useAutoRefresh'
 import StatusBadge from '../components/StatusBadge'
 import { useAuth } from '../AuthContext'
@@ -127,36 +127,25 @@ function OrderIcon({ done }) {
     )
 }
 
-
-/* แคชระดับโมดูล แยกตามผู้ใช้ */
-let cache = { uid: null, data: null }
-
 /* ---------- page ---------- */
 export default function OrdersPage() {
     const { user } = useAuth()
     const uid = user?.id ?? user?.userId ?? user?.email ?? null
-    const [data, setData] = useState(() =>
-        uid && cache.uid === uid ? cache.data : null
-    )
+    const [data, setData] = useState(() => getOrdersCache(uid))
     const [error, setError] = useState('')
     const [filter, setFilter] = useState('all')
 
     const load = useCallback(async () => {
         try {
-            const res = await api.get('/orders')
-            const d = res.data
-            const next = Array.isArray(d)
-                ? { items: d, total: d.length }
-                : { items: d.items ?? [], total: d.total ?? d.items?.length ?? 0 }
-            if (uid) cache = { uid, data: next }
-            setData(next)
+            setData(await fetchOrders(uid))
             setError('')
         } catch (err) {
             setError(errorText(err))
         }
     }, [uid])
 
-    useAutoRefresh(load, { interval: 8000 })
+    useEffect(() => { load() }, [load])      // ยิงทันทีตอนเข้าหน้า
+    useAutoRefresh(load, { interval: 8000 }) // รีเฟรชต่อเนื่อง
 
     const orders = data?.items ?? []
     const totalOrders = data?.total ?? 0
