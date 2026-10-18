@@ -390,24 +390,18 @@ export default function NewOrderPage() {
                         />
 
                         {/* SERVICE */}
-                        <div className="grid gap-2.5 sm:grid-cols-2">
+                        <div className="grid grid-cols-2 gap-2.5">
                             {catalog.services.map((item) => (
                                 <label
                                     key={item.id}
-                                    className={choiceCls(
-                                        serviceId === item.id
-                                    )}
+                                    className={choiceCls(serviceId === item.id)}
                                 >
                                     <input
                                         type="radio"
                                         name="service"
                                         value={item.id}
-                                        checked={
-                                            serviceId === item.id
-                                        }
-                                        onChange={() =>
-                                            setServiceId(item.id)
-                                        }
+                                        checked={serviceId === item.id}
+                                        onChange={() => setServiceId(item.id)}
                                         className="mt-1 size-4 shrink-0 accent-blue-600"
                                     />
 
@@ -475,7 +469,7 @@ export default function NewOrderPage() {
                             {/* คำอธิบายของขนาดที่เลือก (แสดงอันเดียวเพื่อลดความยาว) */}
                             <p className="mt-2.5 rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs leading-5 text-slate-500">
                                 <span className="font-semibold text-slate-700">
-                                    Size {size}:
+                                    Size {size} :
                                 </span>{' '}
                                 {SIZE_DESC[size]}
                             </p>

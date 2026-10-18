@@ -34,7 +34,24 @@ function TrashIcon({ className = 'h-[18px] w-[18px]' }) {
     )
 }
 
-export default function SavedLocations({ items, loading, onRemove }) {
+function PencilIcon({ className = 'h-[18px] w-[18px]' }) {
+    return (
+        <svg
+            className={className}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M4 20h4L19 9l-4-4L4 16z" />
+            <path d="M13.5 6.5l4 4" />
+        </svg>
+    )
+}
+
+export default function SavedLocations({ items, loading, onRemove, onEdit }) {
     return (
         <section>
             {/* Header */}
@@ -118,15 +135,29 @@ export default function SavedLocations({ items, loading, onRemove }) {
                                         </p>
                                     </div>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => onRemove(l.id)}
-                                        aria-label={`ลบที่อยู่ ${l.label || ''}`.trim()}
-                                        title="ลบที่อยู่"
-                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-red-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-100 active:scale-90"
-                                    >
-                                        <TrashIcon />
-                                    </button>
+                                    <div className="flex shrink-0 items-center gap-1">
+                                        {onEdit && (
+                                            <button
+                                                type="button"
+                                                onClick={() => onEdit(l)}
+                                                aria-label={`แก้ไขที่อยู่ ${l.label || ''}`.trim()}
+                                                title="แก้ไขที่อยู่"
+                                                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-100 active:scale-90"
+                                            >
+                                                <PencilIcon />
+                                            </button>
+                                        )}
+
+                                        <button
+                                            type="button"
+                                            onClick={() => onRemove(l.id)}
+                                            aria-label={`ลบที่อยู่ ${l.label || ''}`.trim()}
+                                            title="ลบที่อยู่"
+                                            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-red-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-100 active:scale-90"
+                                        >
+                                            <TrashIcon />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Address */}

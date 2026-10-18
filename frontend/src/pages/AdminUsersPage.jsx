@@ -141,6 +141,99 @@ function ActionModal({ target, action, onClose, onDone }) {
     )
 }
 
+function EditModal({ target, onClose, onDone }) {
+    const [form, setForm] = useState({
+        fullName: target.fullName,
+        email: target.email,
+        phoneNumber: target.phoneNumber ?? '',
+        reason: '',
+    })
+    const [busy, setBusy] = useState(false)
+    const [error, setError] = useState('')
+    const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+    useEffect(() => {
+        const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose() }
+        document.addEventListener('keydown', onKey)
+        return () => document.removeEventListener('keydown', onKey)
+    }, [busy, onClose])
+
+    const emailChanged = form.email.trim().toLowerCase() !== target.email.toLowerCase()
+    const changed =
+        form.fullName.trim() !== target.fullName ||
+        emailChanged ||
+        form.phoneNumber.trim() !== (target.phoneNumber ?? '')
+    const ok = changed && form.fullName.trim().length >= 2 && form.email.trim() && form.reason.trim().length >= 5
+
+    const submit = async (e) => {
+        e.preventDefault()
+        if (!ok || busy) return
+        setBusy(true)
+        setError('')
+        try {
+            const res = await api.put(`/admin/users/${target.id}`, {
+                fullName: form.fullName.trim(),
+                email: form.email.trim(),
+                phoneNumber: form.phoneNumber.trim() || null,
+                reason: form.reason.trim(),
+            })
+            onDone('edit', res.data)
+        } catch (err) {
+            setError(errorText(err))
+            setBusy(false)
+        }
+    }
+
+    const field = 'mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100'
+
+    return (
+        <div
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/50 p-4 sm:items-center"
+            onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose() }}
+        >
+            <form onSubmit={submit} role="dialog" aria-modal="true" aria-label="แก้ไขข้อมูลผู้ใช้"
+                className="w-full max-w-md space-y-4 rounded-3xl bg-white p-6 shadow-xl">
+                <h2 className="text-lg font-bold text-slate-900">แก้ไขข้อมูลผู้ใช้</h2>
+
+                <label className="block text-sm font-medium text-slate-700">
+                    ชื่อ-นามสกุล
+                    <input autoFocus maxLength={100} value={form.fullName} onChange={set('fullName')} className={field} />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                    อีเมล
+                    <input type="email" maxLength={256} value={form.email} onChange={set('email')} className={field} />
+                </label>
+                {emailChanged && (
+                    <p className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-700">
+                        เปลี่ยนอีเมลแล้วผู้ใช้จะถูกออกจากระบบทุกอุปกรณ์ และต้องยืนยันอีเมลใหม่ก่อนเข้าใช้งานได้
+                    </p>
+                )}
+                <label className="block text-sm font-medium text-slate-700">
+                    เบอร์โทร (ไม่บังคับ)
+                    <input inputMode="tel" maxLength={20} value={form.phoneNumber} onChange={set('phoneNumber')} className={field} />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                    เหตุผล (บันทึกใน AuditLog)
+                    <textarea rows={2} maxLength={500} value={form.reason} onChange={set('reason')} className={field} placeholder="อย่างน้อย 5 ตัวอักษร" />
+                </label>
+
+                {error && <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+
+                <div className="flex justify-end gap-2">
+                    <button type="button" onClick={onClose} disabled={busy}
+                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" disabled={!ok || busy}
+                        className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">
+                        {busy ? 'กำลังบันทึก...' : 'บันทึก'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    )
+}
+
 export default function AdminUsersPage() {
     const [q, setQ] = useState('')
     const [role, setRole] = useState('')
@@ -174,7 +267,7 @@ export default function AdminUsersPage() {
 
     const onDone = (action, data) => {
         setModal(null)
-        const base = { suspend: 'ระงับบัญชีแล้ว', unsuspend: 'ยกเลิกการระงับแล้ว', delete: 'ลบบัญชีแล้ว' }[action]
+        const base = { suspend: 'ระงับบัญชีแล้ว', unsuspend: 'ยกเลิกการระงับแล้ว', delete: 'ลบบัญชีแล้ว', edit: 'บันทึกข้อมูลผู้ใช้แล้ว' }[action]
         setNotice(
             action === 'suspend' && data?.affectedJobs > 0
                 ? `${base} — Rider คนนี้ยังมีงานค้าง ${data.affectedJobs} งาน ต้องย้ายงานให้ Rider คนอื่น`
@@ -253,6 +346,18 @@ export default function AdminUsersPage() {
 
                                 {!isAdmin && !u.deletedAt && (
                                     <div className="flex shrink-0 gap-2">
+                                        <button
+                                            type="button"
+                                            title="แก้ไขข้อมูล"
+                                            aria-label="แก้ไขข้อมูล"
+                                            onClick={() => setModal({ user: u, action: 'edit' })}
+                                            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 active:scale-95"
+                                        >
+                                            <svg {...ICON}>
+                                                <path d="M4 20h4L19 9l-4-4L4 16z" />
+                                                <path d="M13.5 6.5l4 4" />
+                                            </svg>
+                                        </button>
                                         {u.isSuspended ? (
                                             <button
                                                 type="button"
@@ -305,14 +410,16 @@ export default function AdminUsersPage() {
                 <p className="text-xs text-slate-400">แสดง 50 รายการแรก ใช้ช่องค้นหาเพื่อกรองให้แคบลง</p>
             )}
 
-            {modal && (
+            {modal && (modal.action === 'edit' ? (
+                <EditModal target={modal.user} onClose={() => setModal(null)} onDone={onDone} />
+            ) : (
                 <ActionModal
                     target={modal.user}
                     action={modal.action}
                     onClose={() => setModal(null)}
                     onDone={onDone}
                 />
-            )}
+            ))}
         </div>
     )
 }

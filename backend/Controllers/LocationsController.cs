@@ -60,6 +60,37 @@ public class LocationsController(AppDbContext db) : ControllerBase
         return StatusCode(StatusCodes.Status201Created, LocationDto.From(loc));
     }
 
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, LocationRequest req)
+    {
+        var userId = UserId;
+        var old = await db.Locations.FirstOrDefaultAsync(l => l.Id == id && l.UserId == userId && l.IsSaved);
+        if (old is null) return NotFound();
+
+        if (req.Latitude == 0 && req.Longitude == 0)
+            return BadRequest(new { error = "กรุณาระบุตำแหน่ง (กดปุ่มใช้ตำแหน่งปัจจุบัน)" });
+
+        // สร้างแถวใหม่ + ซ่อนแถวเดิม (ออเดอร์เก่ายังชี้ที่อยู่เดิม) บันทึกใน SaveChanges เดียวกัน
+        var loc = new Location
+        {
+            UserId = userId,
+            IsSaved = true,
+            Label = Input.Clean(req.Label),
+            Address = req.Address.Trim(),
+            Building = Input.Clean(req.Building),
+            Floor = Input.Clean(req.Floor),
+            Room = Input.Clean(req.Room),
+            Landmark = Input.Clean(req.Landmark),
+            Latitude = req.Latitude,
+            Longitude = req.Longitude,
+        };
+
+        old.IsSaved = false;
+        db.Locations.Add(loc);
+        await db.SaveChangesAsync();
+        return Ok(LocationDto.From(loc));
+    }
+
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {

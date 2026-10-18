@@ -158,6 +158,50 @@ function LocationPicker({ latitude, longitude, onChange, flyTo }) {
     )
 }
 
+function ConfirmDeleteModal({ item, busy, onCancel, onConfirm }) {
+    useEffect(() => {
+        const onKey = (e) => { if (e.key === 'Escape' && !busy) onCancel() }
+        document.addEventListener('keydown', onKey)
+        return () => document.removeEventListener('keydown', onKey)
+    }, [busy, onCancel])
+
+    return (
+        <div
+            className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/50 p-4 sm:items-center"
+            onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onCancel() }}
+        >
+            <div role="alertdialog" aria-modal="true" aria-label="ยืนยันการลบที่อยู่"
+                className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-xl">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-500">
+                    <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 7h16M10 11v6M14 11v6" />
+                        <path d="M6 7l1 13h10l1-13M9 7V4h6v3" />
+                    </svg>
+                </div>
+                <h2 className="mt-4 text-lg font-bold text-slate-900">ลบที่อยู่นี้?</h2>
+                {(item.label || item.address) && (
+                    <p className="mt-2 line-clamp-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                        {item.label ? <b>{item.label} · </b> : null}{item.address}
+                    </p>
+                )}
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                    ที่อยู่นี้จะหายจากรายการที่บันทึกไว้ ออเดอร์เดิมที่เคยใช้ที่อยู่นี้จะไม่ได้รับผลกระทบ
+                </p>
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                    <button type="button" onClick={onCancel} disabled={busy}
+                        className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+                        ยกเลิก
+                    </button>
+                    <button type="button" onClick={onConfirm} disabled={busy}
+                        className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60">
+                        {busy ? 'กำลังลบ...' : 'ลบที่อยู่'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 export default function LocationsPage() {
     const [items, setItems] = useState([])
     const [loading, setLoading] = useState(true)
@@ -166,6 +210,10 @@ export default function LocationsPage() {
     const [geoMsg, setGeoMsg] = useState('')
     const [busy, setBusy] = useState(false)
     const [flyTo, setFlyTo] = useState(0)
+    const [editingId, setEditingId] = useState(null)
+    const [deleteTarget, setDeleteTarget] = useState(null)
+    const [deleting, setDeleting] = useState(false)
+    const formRef = useRef(null)
 
     const load = () => {
         api.get('/locations')
@@ -226,27 +274,53 @@ export default function LocationsPage() {
         )
     }
 
+    const startEdit = (it) => {
+        setEditingId(it.id)
+        setForm({
+            label: it.label ?? '',
+            address: it.address ?? '',
+            building: it.building ?? '',
+            floor: it.floor ?? '',
+            room: it.room ?? '',
+            landmark: it.landmark ?? '',
+            latitude: it.latitude,
+            longitude: it.longitude,
+        })
+        setGeoMsg('')
+        setError('')
+        setFlyTo((n) => n + 1)
+        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+
+    const cancelEdit = () => {
+        setEditingId(null)
+        setForm(emptyForm)
+        setGeoMsg('')
+    }
+
     const submit = async (e) => {
         e.preventDefault()
-
         setError('')
         setBusy(true)
 
-        try {
-            await api.post('/locations', {
-                label: form.label.trim() || null,
-                address: form.address.trim(),
-                building: form.building.trim() || null,
-                floor: form.floor.trim() || null,
-                room: form.room.trim() || null,
-                landmark: form.landmark.trim() || null,
-                latitude: form.latitude,
-                longitude: form.longitude,
-            })
+        const payload = {
+            label: form.label.trim() || null,
+            address: form.address.trim(),
+            building: form.building.trim() || null,
+            floor: form.floor.trim() || null,
+            room: form.room.trim() || null,
+            landmark: form.landmark.trim() || null,
+            latitude: form.latitude,
+            longitude: form.longitude,
+        }
 
+        try {
+            if (editingId) await api.put(`/locations/${editingId}`, payload)
+            else await api.post('/locations', payload)
+
+            setEditingId(null)
             setForm(emptyForm)
             setGeoMsg('')
-
             await load()
         } catch (err) {
             setError(errorText(err))
@@ -255,16 +329,21 @@ export default function LocationsPage() {
         }
     }
 
-    const remove = async (id) => {
-        if (!window.confirm('ต้องการลบที่อยู่นี้ออกจากรายการหรือไม่?')) {
-            return
-        }
+    const askRemove = (id) => setDeleteTarget(items.find((i) => i.id === id) ?? { id })
 
+    const confirmRemove = async () => {
+        if (!deleteTarget) return
+        setDeleting(true)
         try {
-            await api.delete(`/locations/${id}`)
+            await api.delete(`/locations/${deleteTarget.id}`)
+            if (editingId === deleteTarget.id) cancelEdit()
+            setDeleteTarget(null)
             await load()
         } catch (err) {
             setError(errorText(err))
+            setDeleteTarget(null)
+        } finally {
+            setDeleting(false)
         }
     }
 
@@ -302,7 +381,7 @@ export default function LocationsPage() {
             )}
 
             {/* Add Location */}
-            <section className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
+            <section ref={formRef} className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
 
                 {/* Section Header */}
                 <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-blue-50/60 px-6 py-5 sm:px-8">
@@ -311,7 +390,7 @@ export default function LocationsPage() {
                     </p>
 
                     <h2 className="mt-1 text-xl font-bold text-slate-900">
-                        เพิ่มที่อยู่ใหม่
+                        {editingId ? 'แก้ไขที่อยู่' : 'เพิ่มที่อยู่ใหม่'}
                     </h2>
 
                     <p className="mt-1 text-sm text-slate-500">
@@ -461,6 +540,19 @@ export default function LocationsPage() {
 
                             </div>
 
+                            {editingId && (
+                                <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                    <span>กำลังแก้ไขที่อยู่ที่บันทึกไว้</span>
+                                    <button
+                                        type="button"
+                                        onClick={cancelEdit}
+                                        className="font-bold hover:underline"
+                                    >
+                                        ยกเลิกการแก้ไข
+                                    </button>
+                                </div>
+                            )}
+
                             {/* Submit */}
                             <button
                                 type="submit"
@@ -469,7 +561,7 @@ export default function LocationsPage() {
                             >
                                 {busy
                                     ? 'กำลังบันทึก...'
-                                    : 'บันทึกที่อยู่'}
+                                    : editingId ? 'บันทึกการแก้ไข' : 'บันทึกที่อยู่'}
                             </button>
 
                         </div>
@@ -533,7 +625,16 @@ export default function LocationsPage() {
             </section>
 
             {/* Saved Locations */}
-            <SavedLocations items={items} loading={loading} onRemove={remove} />
+            <SavedLocations items={items} loading={loading} onRemove={askRemove} onEdit={startEdit} />
+
+            {deleteTarget && (
+                <ConfirmDeleteModal
+                    item={deleteTarget}
+                    busy={deleting}
+                    onCancel={() => setDeleteTarget(null)}
+                    onConfirm={confirmRemove}
+                />
+            )}
         </div>
     )
 }

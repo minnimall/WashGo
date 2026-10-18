@@ -24,7 +24,7 @@ export const STATUS_LABELS = {
     Cancelled: 'ยกเลิก',
 }
 
-export const SIZE_DESC = { S: 'ถุงเล็ก 3–5 ชุด', M: 'ถุงกลาง', L: 'ถุงใหญ่/ตะกร้า' }
+export const SIZE_DESC = { S: 'ขนาด 15 - 20 ชิ้น', M: 'ขนาด 20 - 25 ชิ้น', L: 'ขนาด 25 - 30 ชิ้น' }
 
 export const DETERGENT_LABELS = {
     Standard: 'น้ำยามาตรฐาน (รวมในราคาแล้ว)',

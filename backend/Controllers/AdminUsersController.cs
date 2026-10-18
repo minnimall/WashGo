@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -17,12 +18,18 @@ public class ReasonRequest
 public record AdminUserDto(
     string Id, string FullName, string Email, string? Role,
     bool IsSuspended, string? SuspendedReason, DateTime? DeletedAt,
-    RiderVerificationStatus? RiderStatus);
+RiderVerificationStatus? RiderStatus, string? PhoneNumber);
+
+public record UserUpdateRequest(
+    [Required, StringLength(100, MinimumLength = 2)] string FullName,
+    [Required, EmailAddress, MaxLength(256)] string Email,
+    [MaxLength(20)] string? PhoneNumber,
+    [Required, MinLength(5), MaxLength(500)] string Reason);
 
 [ApiController]
 [Route("api/admin/users")]
 [Authorize(Roles = Roles.Admin)]
-public class AdminUsersController(AppDbContext db, StorageService storage) : ControllerBase
+public class AdminUsersController(AppDbContext db, StorageService storage, UserManager<ApplicationUser> userManager) : ControllerBase
 {
     string AdminId => User.FindFirstValue("sub")!;
 
@@ -71,10 +78,61 @@ public class AdminUsersController(AppDbContext db, StorageService storage) : Con
                 db.UserRoles.Where(ur => ur.UserId == u.Id)
                     .Join(db.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name).FirstOrDefault(),
                 u.IsSuspended, u.SuspendedReason, u.DeletedAt,
-                u.RiderProfile != null ? (RiderVerificationStatus?)u.RiderProfile.VerificationStatus : null))
+                u.RiderProfile != null ? (RiderVerificationStatus?)u.RiderProfile.VerificationStatus : null,
+                u.PhoneNumber))
             .ToListAsync();
 
         return Ok(rows);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(string id, UserUpdateRequest req)
+    {
+        var (user, error) = await FindTargetAsync(id);
+        if (user is null) return error!;
+        if (user.DeletedAt != null) return Conflict(new { error = "บัญชีที่ถูกลบแก้ไขไม่ได้" });
+
+        var reason = Input.Clean(req.Reason);
+        var name = Input.Clean(req.FullName);
+        var email = Input.Clean(req.Email);
+        var phone = Input.Clean(req.PhoneNumber);
+
+        if (reason is null || reason.Length < 5) return BadRequest(new { error = "กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร" });
+        if (name is null || name.Length < 2) return BadRequest(new { error = "กรุณากรอกชื่อ" });
+        if (email is null) return BadRequest(new { error = "กรุณากรอกอีเมล" });
+        if (phone is not null && !phone.All(c => char.IsDigit(c) || c is '+' or '-' or ' '))
+            return BadRequest(new { error = "เบอร์โทรไม่ถูกต้อง" });
+
+        var changed = new List<string>();
+        if (user.FullName != name) { user.FullName = name; changed.Add("ชื่อ"); }
+        if (user.PhoneNumber != phone)
+        {
+            user.PhoneNumber = phone;
+            user.PhoneNumberConfirmed = false;
+            changed.Add("เบอร์โทร");
+        }
+
+        if (!string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+        {
+            var norm = userManager.NormalizeEmail(email);
+            if (await db.Users.AnyAsync(u => u.Id != id && u.NormalizedEmail == norm))
+                return Conflict(new { error = "อีเมลนี้ถูกใช้งานแล้ว" });
+
+            user.Email = email;
+            user.NormalizedEmail = norm;
+            user.UserName = email;
+            user.NormalizedUserName = userManager.NormalizeName(email);
+            user.EmailConfirmed = false;                       // เจ้าของอีเมลใหม่ต้องยืนยันก่อนเข้าใช้
+            user.SecurityStamp = Guid.NewGuid().ToString();    // ออกจากระบบทุกอุปกรณ์ทันที
+            changed.Add("อีเมล");
+        }
+
+        if (changed.Count == 0) return BadRequest(new { error = "ไม่มีข้อมูลที่เปลี่ยนแปลง" });
+
+        // log เฉพาะชื่อฟิลด์ที่แก้ ไม่เก็บค่าเดิม/ใหม่ (ข้อมูลส่วนตัว)
+        Audit("UpdateUser", id, $"{reason} (แก้ไข: {string.Join(", ", changed)})");
+        await db.SaveChangesAsync();
+        return Ok(new { id = user.Id, fullName = user.FullName, email = user.Email, phoneNumber = user.PhoneNumber });
     }
 
     [HttpPost("{id}/suspend")]
